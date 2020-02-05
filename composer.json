@@ -1,9 +1,9 @@
 {
-    "name": "tuyenlaptrinh/bee",
+    "name": "cuveen/framework",
     "description": "Cuveen Framework",
     "keywords": [
         "framework",
-        "bee"
+        "cuveen"
     ],
     "license": "MIT",
     "authors": [
