@@ -1,0 +1,33 @@
+{
+    "name": "tuyenlaptrinh/bee",
+    "description": "Cuveen Framework",
+    "keywords": [
+        "framework",
+        "bee"
+    ],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Tuyen Pham",
+            "email": "tuyenlaptrinh@gmail.com"
+        }
+    ],
+    "require": {
+        "php": "^7.1",
+        "ext-json": "*",
+        "ext-mbstring": "*",
+        "ext-openssl": "*",
+        "dragonmantank/cron-expression": "^2.0",
+        "swiftmailer/swiftmailer": "^6.0",
+        "nesbot/carbon": "^2.0",
+        "vlucas/phpdotenv": "^3.3"
+    },
+    "autoload": {
+        "files": [
+            "src/Helpers/functions.php"
+        ],
+        "psr-4": {
+            "Cuveen\\": "src/Cuveen/"
+        }
+    }
+}
