@@ -1405,7 +1405,7 @@ class View
      * @return string
      * @throws Exception
      */
-    public function render($view, $variables = [])
+    public function render($view, $variables = '')
     {
         $mode = $this->getMode();
         $forced = $mode & 1; // mode=1 forced:it recompiles no matter if the compiled file exists or not.
@@ -1413,6 +1413,9 @@ class View
         $this->sections = [];
         if ($mode == 3) {
             $this->showError("run", "we can't force and run fast at the same time", true);
+        }
+        if(is_string($variables)){
+            $variables = ['data'=>$variables];
         }
         return $this->runInternal($view, $variables, $forced, true, $runFast);
     }

@@ -130,8 +130,7 @@ class RouterCommand
             $controllerMethod = $segments[1];
             $controller = $this->resolveClass($controllerClass, $info['path'], $info['namespace']);
             if (method_exists($controller, $controllerMethod)) {
-                echo $this->runMethodWithParams([$controller, $controllerMethod], $params);
-                return;
+                return $this->runMethodWithParams([$controller, $controllerMethod], $params);
             }
 
             return $this->exception($controllerMethod . ' method is not found in '.$controllerClass.' class.');

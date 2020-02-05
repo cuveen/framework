@@ -79,7 +79,7 @@ class App {
     {
         $view_path = (!empty($this->config->get('view.path')))?$this->config->get('view.path'):'views';
         $view_compiled = (!empty($this->config->get('view.compiled')))?$this->config->get('view.compiled'):$this->base_path.'/compiled';
-        $this->view = new View($view_path,$view_compiled,View::MODE_AUTO);
+        $this->view = new View($this->base_path.'/'.$view_path,$view_compiled,View::MODE_AUTO);
         /*LOAD HELPER*/
         if (is_dir($this->base_path . '/helpers/') && $handle = opendir($this->base_path . '/helpers/')) {
             while (false !== ($entry = readdir($handle))) {

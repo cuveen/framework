@@ -3,6 +3,7 @@ use Cuveen\Config\Config;
 use Cuveen\Http\Redirect;
 use Cuveen\Http\Request;
 use Cuveen\Auth\Auth;
+use Cuveen\Http\Response;
 use Cuveen\Validator\Validator;
 use Cuveen\Hash\Security;
 use Cuveen\View\View;
@@ -124,5 +125,10 @@ function validate($arrs = array())
 
 function view($view, $variables = []){
     $render = View::getInstance();
-    return $render->render($view, $variables);
+    echo $render->render($view, $variables);
+}
+function response($content = '', $code = 200)
+{
+    $response = new Response($content, $code);
+    return $response;
 }
