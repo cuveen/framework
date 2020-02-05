@@ -108,7 +108,8 @@ class Command {
     protected function schedulerun($arg)
     {
         if(realpath($this->base_path . '/schedules')) {
-            if ($handle = opendir($this->base_path . '/schedules/')) {
+            if ($handle = opendir($this->base_path . '/schedules/'))
+            {
                 while (false !== ($entry = readdir($handle))) {
                     if ($entry != '.' && $entry != '..' && substr($entry, -4, 4) == '.php') {
                         include($this->base_path . '/schedules/' . $entry);
@@ -122,6 +123,12 @@ class Command {
                 }
                 closedir($handle);
             }
+            else{
+                echo "\033[1;33mNo command for schedule\033[0m\n";
+            }
+        }
+        else{
+            echo "\033[1;33mNo command for schedule\033[0m\n";
         }
     }
 
@@ -609,18 +616,23 @@ class Command {
         echo "+------------------".($this->returnLine($this->mostLenght($routes), 'URI'))."-".($this->returnLine($this->mostLenght($routes,'name'), 'Name'))."-".($this->returnLine($this->mostLenght($routes,'callback'), 'Action'))."-".($this->returnLine($this->mostLenght($routes,'before'), 'Before'))."-".($this->returnLine($this->mostLenght($routes,'after'), 'After'))."+\n";
         if(count($routes) > 0){
             foreach($routes as $route){
-                echo "|        |".($this->returnSpace($this->mostLenght($routes), $this->convertType($route['method'])))."|".($this->returnSpace($this->mostLenght($routes), $this->convertType($route['route'])))."|".($this->returnSpace($this->mostLenght($routes,'name'), $this->convertType($route['name'])))."|".($this->returnSpace($this->mostLenght($routes,'callback'), $this->convertType($route['callback'],'callback')))."|".($this->returnSpace($this->mostLenght($routes,'before'), $this->convertType($route['before'],'before')))."|".($this->returnSpace($this->mostLenght($routes,'after'), $this->convertType($route['after'],'after')))."|\n";
+                echo "|        |".($this->returnSpace($this->mostLenght($routes, 'method'), $route['method'], 'Method'))."|".($this->returnSpace($this->mostLenght($routes), $this->convertType($route['route'])))."|".($this->returnSpace($this->mostLenght($routes,'name'), $this->convertType($route['name'])))."|".($this->returnSpace($this->mostLenght($routes,'callback'), $this->convertType($route['callback'],'callback')))."|".($this->returnSpace($this->mostLenght($routes,'before'), $this->convertType($route['before'],'before')))."|".($this->returnSpace($this->mostLenght($routes,'after'), $this->convertType($route['after'],'after')))."|\n";
                 echo "+------------------".($this->returnLine($this->mostLenght($routes), $this->convertType($route['route'])))."-".($this->returnLine($this->mostLenght($routes,'name'), $this->convertType($route['name'])))."-".($this->returnLine($this->mostLenght($routes,'callback'), $this->convertType($route['callback'],'callback')))."-".($this->returnLine($this->mostLenght($routes,'before'), $this->convertType($route['before'],'before')))."-".($this->returnLine($this->mostLenght($routes,'after'), $this->convertType($route['after'],'after')))."+\n";
             }
         }
 
     }
 
-    public function returnSpace($lenght, $text)
+    public function returnSpace($lenght, $text, $secondText = '')
     {
         $result = '';
         if($lenght > strlen($text)){
             for($i = 0; $i < ($lenght-strlen($text)); $i++){
+                $result .= ' ';
+            }
+        }
+        if($lenght == strlen($text) && strlen($secondText) > $lenght){
+            for($i = 0; $i < (strlen($secondText)-strlen($text)-1); $i++){
                 $result .= ' ';
             }
         }
