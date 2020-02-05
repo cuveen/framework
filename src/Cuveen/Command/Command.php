@@ -28,7 +28,7 @@ class Command {
     protected function getHelper()
     {
         echo "\e[45m+--------------------------------------------------------------------------------+\e[0m\n";
-        echo "\e[45m|                               CUVEEN ARTISAN COMMAND                              |\e[0m\n";
+        echo "\e[45m|                            CUVEEN ARTISAN COMMAND                              |\e[0m\n";
         echo "\e[45m+--------------------------------------------------------------------------------+\e[0m\n";
         echo "Cuveen Framework 1.3\n";
         echo "\033[1;33mUsage:\033[0m\n";
