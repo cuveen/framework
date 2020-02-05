@@ -107,19 +107,21 @@ class Command {
 
     protected function schedulerun($arg)
     {
-        if ($handle = opendir($this->base_path . '/schedules/')) {
-            while (false !== ($entry = readdir($handle))) {
-                if ($entry != '.' && $entry != '..' && substr($entry, -4, 4) == '.php') {
-                    include($this->base_path.'/schedules/'.$entry);
-                    $info = pathinfo($entry);
-                    $class_name = $info['filename'];
-                    if(class_exists($class_name) && method_exists($class_name, 'handle')){
-                        $class = new $class_name();
-                        call_user_func_array([$class,'handle'],[]);
+        if(realpath($this->base_path . '/schedules')) {
+            if ($handle = opendir($this->base_path . '/schedules/')) {
+                while (false !== ($entry = readdir($handle))) {
+                    if ($entry != '.' && $entry != '..' && substr($entry, -4, 4) == '.php') {
+                        include($this->base_path . '/schedules/' . $entry);
+                        $info = pathinfo($entry);
+                        $class_name = $info['filename'];
+                        if (class_exists($class_name) && method_exists($class_name, 'handle')) {
+                            $class = new $class_name();
+                            call_user_func_array([$class, 'handle'], []);
+                        }
                     }
                 }
+                closedir($handle);
             }
-            closedir($handle);
         }
     }
 
