@@ -136,6 +136,8 @@ class Router
     protected $config;
     protected $session;
 
+    protected static $instance;
+
     function __construct(array $params = [])
     {
         $this->documentRoot = realpath($_SERVER['DOCUMENT_ROOT']);
@@ -155,6 +157,12 @@ class Router
 
         $this->setPaths($params);
         $this->loadCache();
+        self::$instance = $this;
+    }
+
+    public static function getInstance()
+    {
+        return self::$instance;
     }
 
     /**

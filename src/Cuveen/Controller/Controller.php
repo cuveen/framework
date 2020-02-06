@@ -18,7 +18,8 @@ class Controller
     protected $request;
     protected $session;
     protected $security;
-    public $config;
+    protected $config;
+    protected $router;
     protected $auth;
     protected $view;
     public function __construct()
@@ -30,6 +31,7 @@ class Controller
         $this->session = Session::getInstance();
         $this->auth = Auth::getInstance();
         $this->view = View::getInstance();
+        $this->router = Router::getInstance();
     }
     public function model($model, $attr = false)
     {
