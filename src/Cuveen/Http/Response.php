@@ -4,6 +4,7 @@
 namespace Cuveen\Http;
 
 use Cuveen\Http\Cookie;
+use Cuveen\Storage\Storage;
 
 class Response
 {
@@ -106,6 +107,12 @@ class Response
                 break;
         }
         return $text;
+    }
+
+    public function download($filePath, $suggestedFilename = false, $mimeType = null)
+    {
+        $storage = new Storage();
+        return $storage->download($filePath, $suggestedFilename = false, $mimeType = null);
     }
 
     public function __destruct()
