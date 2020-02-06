@@ -38,6 +38,7 @@ class App {
         $dotenv = Dotenv::create([$this->base_path]);
         $dotenv->load();
         $config = new Config($this->base_path);
+        $this->config = $config;
         $timezone = (!empty($this->config->get('app.timezone')))?$this->timezones($this->config->get('app.timezone')):'UTC';
         date_default_timezone_set($timezone);
         $this->request = new Request();
@@ -62,7 +63,6 @@ class App {
             }
         }
         $this->auth = new Auth();
-        $this->config = $config;
         $cache_path = (!empty($this->config->get('cache.path')))?$this->config->get('cache.path'):DIRECTORY_SEPARATOR.'tmp';
         $controllers_path = (!empty($this->config->get('app.controllers')))?$this->config->get('app.controllers'):'controllers';
         $middlewares_path = (!empty($this->config->get('middleware.path')))?$this->config->get('middleware.path'):'middlewares';
