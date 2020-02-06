@@ -112,7 +112,7 @@ class Response
     public function download($filePath, $suggestedFilename = false, $mimeType = null)
     {
         $storage = new Storage();
-        return $storage->download($filePath, $suggestedFilename = false, $mimeType = null);
+        return $storage->download($filePath, $suggestedFilename, $mimeType);
     }
 
     public function __destruct()
