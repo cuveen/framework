@@ -17,7 +17,7 @@ class Model
     public function __construct($db)
     {
         if(is_null($this->table)){
-            $this->table = DatabaseTable::pluralize(mb_strtolower(new \ReflectionClass(get_called_class()))->getShortName());
+            $this->table = DatabaseTable::pluralize(mb_strtolower($this->calledClass()));
         }
         $this->db = $db;
         $this->db->objectBuilder();
@@ -26,6 +26,14 @@ class Model
     public function count()
     {
         return $this->db->count;
+    }
+
+    public function calledClass()
+    {
+        $class = get_called_class();
+        $class = explode( '\\', $class );
+        $class = end( $class );
+        return $class;
     }
 
     public function getOne($columns = '*')
