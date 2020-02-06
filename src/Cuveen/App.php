@@ -38,6 +38,8 @@ class App {
         $dotenv = Dotenv::create([$this->base_path]);
         $dotenv->load();
         $config = new Config($this->base_path);
+        $timezone = (!empty($this->config->get('app.timezone')))?$this->timezones($this->config->get('app.timezone')):'UTC';
+        date_default_timezone_set($timezone);
         $this->request = new Request();
         $this->session = new Session();
         $this->scheduler = new Scheduler();
@@ -81,8 +83,6 @@ class App {
 
     public function run()
     {
-        $timezone = (!empty($this->config->get('app.timezone')))?$this->timezones($this->config->get('app.timezone')):'UTC';
-        date_default_timezone_set($timezone);
         $this->security->DeleteUnnecessaryTokens();
         if(!$this->security->CountsTokens()){
             $this->security->GenerateTokens(3, 60);
