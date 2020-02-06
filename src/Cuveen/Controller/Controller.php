@@ -22,6 +22,7 @@ class Controller
     protected $router;
     protected $auth;
     protected $view;
+    protected $base_path;
     public function __construct()
     {
         $this->db = DB::getInstance();
@@ -32,6 +33,7 @@ class Controller
         $this->auth = Auth::getInstance();
         $this->view = View::getInstance();
         $this->router = Router::getInstance();
+        $this->base_path = $this->config->get('base_path');
     }
     public function model($model, $attr = false)
     {
