@@ -12,13 +12,17 @@ class Model
     protected $primaryKey = 'id';
     protected $timestamp = true;
     protected $pageLimit = 20;
+    protected $singularName;
     protected $insert_id;
+    const CREATED_AT = 'created_at';
+    const UPDATED_AT = 'updated_at';
 
     public function __construct($db)
     {
         if(is_null($this->table)){
-            $this->table = DatabaseTable::pluralize(mb_strtolower($this->calledClass()));
+            $this->table = DatabaseTable::pluralize(mb_strtolower($this->className(get_called_class())));
         }
+        $this->singularName = DatabaseTable::singularize($this->table);
         $this->db = $db;
         $this->db->objectBuilder();
     }
@@ -34,10 +38,9 @@ class Model
         return $this->db->count;
     }
 
-    public function calledClass()
+    public function className($name)
     {
-        $class = get_called_class();
-        $class = explode( '\\', $class );
+        $class = explode( '\\', $name );
         $class = end( $class );
         return $class;
     }
@@ -118,9 +121,44 @@ class Model
         $this->db->orderBy($orderByField, $orderbyDirection, $customFieldsOrRegExp);
         return $this;
     }
+    
     public function groupBy($groupByField)
     {
         $this->db->groupBy($groupByField);
         return $this;
+    }
+
+    public function hasMany($model, $foreign_key = null, $local_key = null)
+    {
+        if(class_exists($model)){
+            $class_name = $this->className($model);
+            $plural = DatabaseTable::pluralize(mb_strtolower($class_name));
+            $class = new $model($this->db);
+            if(is_null($foreign_key)){
+                $foreign_key = $this->singularName.'_'.$this->primaryKey;
+            }
+            return $class;
+        }
+        return false;
+    }
+
+    public function hasOne($model, $foreign_key = null)
+    {
+        
+    }
+
+    public function belongsTo($model, $foreign_key = null, $local_key = null)
+    {
+
+    }
+
+    public function belongsToMany($model, $table = null, $primary_key = null, $foreign_key = null)
+    {
+
+    }
+
+    public function save()
+    {
+
     }
 }

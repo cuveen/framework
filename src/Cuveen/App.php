@@ -79,6 +79,15 @@ class App {
         }
         $this->request->routes = $router->getRoutes();
         $this->router = $router;
+        // Load all model
+        if (is_dir($this->base_path . DIRECTORY_SEPARATOR.'models'.DIRECTORY_SEPARATOR) && $handle = opendir($this->base_path . DIRECTORY_SEPARATOR.'models'.DIRECTORY_SEPARATOR)) {
+            while (false !== ($entry = readdir($handle))) {
+                if ($entry != '.' && $entry != '..' && substr($entry, -4, 4) == '.php') {
+                    include($this->base_path.DIRECTORY_SEPARATOR.'models'.DIRECTORY_SEPARATOR.$entry);
+                }
+            }
+            closedir($handle);
+        }
     }
 
     public function run()
