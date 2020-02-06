@@ -49,8 +49,6 @@ class View
     public $authAnyCallBack;
     /** @var callable callback of errors. It is used for @error */
     public $errorCallBack;
-    /** @var string security token */
-    public $csrf_token = "";
     /** @var array All of the registered extensions. */
     protected $extensions = [];
     /** @var array All of the finished, captured sections. */
@@ -85,7 +83,7 @@ class View
     /** @var string Get the compiled path for the compiled views. If null then it uses the default path */
     protected $compiledPath;
     /** @var string the extension of the compiled file. */
-    protected $compileExtension = '.beeview';
+    protected $compileExtension = '.cuveen';
     /** @var array Custom "directive" dictionary. Those directives run at compile time. */
     protected $customDirectives = [];
     /** @var bool[] Custom directive dictionary. Those directives run at runtime. */
@@ -982,68 +980,6 @@ class View
     }
 
     /**
-     * Returns the current token. if there is not a token then it generates a new one.
-     * It could require an open session.
-     *
-     * @param bool $fullToken It returns a token with the current ip.
-     * @return string
-     */
-    public function getCsrfToken($fullToken = false)
-    {
-        if ($this->csrf_token == "") {
-            $this->regenerateToken();
-        }
-        if ($fullToken) {
-            return $this->csrf_token . "|" . $this->ipClient();
-        }
-        return $this->csrf_token;
-    }
-
-    /**
-     * Regenerates the csrf token and stores in the session.
-     * It requires an open session.
-     */
-    public function regenerateToken()
-    {
-        try {
-            $this->csrf_token = \bin2hex(\random_bytes(10));
-        } catch (Exception $e) {
-            $this->csrf_token = "123456789012345678901234567890"; // unable to generates a random token.
-        }
-        @$_SESSION["_token"] = $this->csrf_token . "|" . $this->ipClient();
-    }
-
-    public function ipClient()
-    {
-        if (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-            if (\preg_match("/^([d]{1,3}).([d]{1,3}).([d]{1,3}).([d]{1,3})$/", $_SERVER['HTTP_X_FORWARDED_FOR'])) {
-                return $_SERVER['HTTP_X_FORWARDED_FOR'];
-            }
-        }
-        return isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
-    }
-
-    /**
-     * Validates if the csrf token is valid or not.
-     * It could require an open session.
-     *
-     * @return bool
-     */
-    public function csrfIsValid()
-    {
-        if (@$_SERVER['REQUEST_METHOD'] == 'POST') {
-            $this->csrf_token = @$_POST['_token'];
-            return $this->csrf_token . "|" . $this->ipClient() == @$_SESSION["_token"];
-        } else {
-            if ($this->csrf_token == "") {
-                // if not token then we generate a new one
-                $this->regenerateToken();
-            }
-            return true;
-        }
-    }
-
-    /**
      * Stop injecting content into a section and return its contents.
      *
      * @return string
@@ -1682,10 +1618,6 @@ class View
         return $this->phpTag . " echo '<input type=\"hidden\" name=\"_method\" value=\"$v\"/>';?>";
     }
 
-    protected function compilecsrf()
-    {
-        return $this->phpTag . " echo '<input type=\"hidden\" name=\"_token\" value=\"" . $this->csrf_token . "\"/>';?>";
-    }
 
     protected function compileDd($expression)
     {
