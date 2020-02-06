@@ -21,7 +21,9 @@ class Storage
         if(empty($suggestedFilename)){
             $suggestedFilename = basename($filePath);
         }
-        $fileRoot = (strpos($filePath, $this->config->get('base_path')) !== false)?realpath($this->config->get('base_path').DIRECTORY_SEPARATOR.$filePath):$filePath;
+
+        $fileRoot = (strpos($filePath, $this->config->get('base_path')) !== false)?$filePath:realpath($this->config->get('base_path').DIRECTORY_SEPARATOR.$filePath);
+        $fileRoot = str_replace('\\','/',$fileRoot);
         if (\file_exists($fileRoot) && \is_file($fileRoot)) {
             if ($mimeType === null) {
                 // use a reasonable default value
