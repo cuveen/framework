@@ -105,47 +105,47 @@ class Mail
         return $this;
     }
 
-    public function send($emailClass)
+    public function send($emailClass = null)
     {
-        $mailable = $emailClass->build();
-        $this->message->setTo(self::$to);
-        if(isset($mailable->data) && !empty($mailable->data)){
-            if(is_string($mailable->data)){
-                $this->data = ['data' => $mailable->data];
+
+        if(is_object($emailClass)) {
+            $mailable = $emailClass->build();
+            $this->message->setTo(self::$to);
+            if (isset($mailable->data) && !empty($mailable->data)) {
+                if (is_string($mailable->data)) {
+                    $this->data = ['data' => $mailable->data];
+                } elseif (is_array($mailable->data)) {
+                    $this->data = $mailable->data;
+                }
             }
-            elseif(is_array($mailable->data)){
-                $this->data = $mailable->data;
+            if (isset($mailable->body)) {
+                $this->body = $mailable->body;
             }
-        }
-        if(isset($mailable->body)){
-            $this->body = $mailable->body;
-        }
-        if(isset($mailable->from)){
-            if(is_array($mailable->from) && count($mailable->from) == 2){
-                $this->from($mailable->from[0], $mailable->from[1]);
+            if (isset($mailable->from)) {
+                if (is_array($mailable->from) && count($mailable->from) == 2) {
+                    $this->from($mailable->from[0], $mailable->from[1]);
+                } elseif (is_string($mailable->from) && filter_var($mailable->from, FILTER_VALIDATE_EMAIL)) {
+                    $this->from($mailable->from);
+                }
             }
-            elseif(is_string($mailable->from) && filter_var($mailable->from, FILTER_VALIDATE_EMAIL)){
-                $this->from($mailable->from);
+            if (isset($mailable->attach) && !empty($mailable->attach)) {
+                if (is_array($mailable->attach) && count($mailable->attach) == 2) {
+                    $this->attach($mailable->attach[0], @$mailable->attach[1]);
+                } else {
+                    $this->attach($mailable->attach);
+                }
             }
-        }
-        if(isset($mailable->attach) && !empty($mailable->attach)){
-            if(is_array($mailable->attach) && count($mailable->attach) == 2){
-                $this->attach($mailable->attach[0], @$mailable->attach[1]);
+            if (isset($mailable->view) && $mailable->view != '') {
+                $this->template($mailable->view, $this->data);
             }
-            else{
-                $this->attach($mailable->attach);
+            if (isset($mailable->subject)) {
+                $this->subject($mailable->subject);
             }
-        }
-        if(isset($mailable->view) && $mailable->view != ''){
-            $this->template($mailable->view, $this->data);
-        }
-        if(isset($mailable->subject)){
-            $this->subject($mailable->subject);
         }
         return $this->realSend();
     }
 
-    public function realSend()
+    private function realSend()
     {
         $this->message->setContentType('text/html');
         $this->message->setBody($this->body);
