@@ -57,6 +57,14 @@ class Model
 
     public function insert($data)
     {
+        if($this->timestamp) {
+            if (!isset($data[self::CREATED_AT]) || empty($data[self::CREATED_AT])) {
+                $data[self::CREATED_AT] = date('Y-m-d H:i:s');
+            }
+            if (!isset($data[self::UPDATED_AT]) || empty($data[self::UPDATED_AT])) {
+                $data[self::CREATED_AT] = date('Y-m-d H:i:s');
+            }
+        }
         $result = $this->db->insert($this->table, $data);
         $this->insert_id = $this->db->getInsertId();
         return $result;
@@ -85,6 +93,11 @@ class Model
 
     public function update($data, $numRows = null)
     {
+        if($this->timestamp) {
+            if (!isset($data[self::UPDATED_AT]) || empty($data[self::UPDATED_AT])) {
+                $data[self::CREATED_AT] = date('Y-m-d H:i:s');
+            }
+        }
         return $this->db->update($this->table, $data, $numRows);
     }
 
@@ -126,39 +139,5 @@ class Model
     {
         $this->db->groupBy($groupByField);
         return $this;
-    }
-
-    public function hasMany($model, $foreign_key = null, $local_key = null)
-    {
-        if(class_exists($model)){
-            $class_name = $this->className($model);
-            $plural = DatabaseTable::pluralize(mb_strtolower($class_name));
-            $class = new $model($this->db);
-            if(is_null($foreign_key)){
-                $foreign_key = $this->singularName.'_'.$this->primaryKey;
-            }
-            return $class;
-        }
-        return false;
-    }
-
-    public function hasOne($model, $foreign_key = null)
-    {
-        
-    }
-
-    public function belongsTo($model, $foreign_key = null, $local_key = null)
-    {
-
-    }
-
-    public function belongsToMany($model, $table = null, $primary_key = null, $foreign_key = null)
-    {
-
-    }
-
-    public function save()
-    {
-
     }
 }
