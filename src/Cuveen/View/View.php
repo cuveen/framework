@@ -9,6 +9,7 @@ use BadMethodCallException;
 
 use Closure;
 use Countable;
+use Cuveen\Exception\CuveenException;
 use Exception;
 use InvalidArgumentException;
 
@@ -223,13 +224,7 @@ class View
     public function showError($id, $text, $critic = false)
     {
         \ob_get_clean();
-        echo "<div style='background-color: red; color: black; padding: 3px; border: solid 1px black;'>";
-        echo "View Error [{$id}]:<br>";
-        echo "<span style='color:white'>$text</span><br></div>\n";
-        if ($critic) {
-            die(1);
-        }
-        return "";
+        return new CuveenException('View Error:<br>'.$text);
     }
 
     /**

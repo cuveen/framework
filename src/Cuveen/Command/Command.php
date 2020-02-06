@@ -67,7 +67,7 @@ class Command {
                 }
                 elseif($command == '-v'){
                     // Display version
-                    $composer_file = $this->base_path.'/composer.json';
+                    $composer_file = $this->base_path.DIRECTORY_SEPARATOR.'composer.json';
                     if(!file_exists($composer_file)){
                         echo "\033[1;31mThis app did not installation via composer\033[0m\n";
                     }
@@ -107,12 +107,12 @@ class Command {
 
     protected function schedulerun($arg)
     {
-        if(realpath($this->base_path . '/schedules')) {
-            if ($handle = opendir($this->base_path . '/schedules/'))
+        if(realpath($this->base_path . DIRECTORY_SEPARATOR.'schedules')) {
+            if ($handle = opendir($this->base_path . DIRECTORY_SEPARATOR.'schedules'.DIRECTORY_SEPARATOR))
             {
                 while (false !== ($entry = readdir($handle))) {
                     if ($entry != '.' && $entry != '..' && substr($entry, -4, 4) == '.php') {
-                        include($this->base_path . '/schedules/' . $entry);
+                        include($this->base_path . DIRECTORY_SEPARATOR.'schedules'.DIRECTORY_SEPARATOR . $entry);
                         $info = pathinfo($entry);
                         $class_name = $info['filename'];
                         if (class_exists($class_name) && method_exists($class_name, 'handle')) {
@@ -140,12 +140,12 @@ class Command {
             }
             else{
                 $class_name = trim($arg);
-                $full_mail_path = realpath($this->base_path.'/mail');
+                $full_mail_path = realpath($this->base_path.DIRECTORY_SEPARATOR.'mail');
                 if(!$full_mail_path){
-                    mkdir($this->base_path.'/mail', 0777);
+                    mkdir($this->base_path.DIRECTORY_SEPARATOR.'mail', 0777);
                 }
-                $full_mail_path = realpath($this->base_path.'/mail');
-                $file_name = $full_mail_path.'/'.$class_name.'.php';
+                $full_mail_path = realpath($this->base_path.DIRECTORY_SEPARATOR.'mail');
+                $file_name = $full_mail_path.DIRECTORY_SEPARATOR.$class_name.'.php';
                 if(file_exists($file_name)){
                     echo "\033[1;33mMail class `".$class_name."` already exist\033[0m\n";
                 }
@@ -188,14 +188,14 @@ class Command {
     {
         if(!is_null($arg)){
             $exs = explode('/',$arg);
-            $full_schedules_path = realpath($this->base_path.'/schedules');
+            $full_schedules_path = realpath($this->base_path.DIRECTORY_SEPARATOR.'schedules');
             if(!$full_schedules_path){
-                mkdir($this->base_path.'/schedules', 0777);
+                mkdir($this->base_path.DIRECTORY_SEPARATOR.'schedules', 0777);
             }
-            $full_schedules_path = realpath($this->base_path.'/schedules');
+            $full_schedules_path = realpath($this->base_path.DIRECTORY_SEPARATOR.'schedules');
             if(count($exs) == 1){
                 if($this->validClassName(trim($arg))){
-                    $file_name = $full_schedules_path.'/'.trim($arg).'.php';
+                    $file_name = $full_schedules_path.DIRECTORY_SEPARATOR.trim($arg).'.php';
                     $class_name = trim($arg);
                     if(file_exists($file_name)){
                         echo "\033[1;33mSchedule class already exist\033[0m\n";
@@ -242,14 +242,14 @@ class Command {
         if(!is_null($arg)){
             $exs = explode('/',$arg);
             $middlewares_path = (!empty($this->app->config->get('middleware.path')))?$this->app->config->get('middleware.path'):'middlewares';
-            $full_middlewares_path = realpath($this->base_path.'/'.$middlewares_path);
+            $full_middlewares_path = realpath($this->base_path.DIRECTORY_SEPARATOR.$middlewares_path);
             if(!$full_middlewares_path){
-                mkdir($this->base_path.'/'.$middlewares_path, 0777);
+                mkdir($this->base_path.DIRECTORY_SEPARATOR.$middlewares_path, 0777);
             }
-            $full_middlewares_path = realpath($this->base_path.'/'.$middlewares_path);
+            $full_middlewares_path = realpath($this->base_path.DIRECTORY_SEPARATOR.$middlewares_path);
             if(count($exs) == 1){
                 if($this->validClassName(trim($arg))){
-                    $file_name = $full_middlewares_path.'/'.trim($arg).'.php';
+                    $file_name = $full_middlewares_path.DIRECTORY_SEPARATOR.trim($arg).'.php';
                     $class_name = trim($arg);
                     if(file_exists($file_name)){
                         echo "\033[1;33mMiddleware class already exist\033[0m\n";
@@ -302,11 +302,11 @@ class Command {
                         $i++;
                         if($i == count($exs)){
                             $class_name = trim($ex1);
-                            $file_name = $full_middlewares_path.'/'.trim($ex1).'.php';
+                            $file_name = $full_middlewares_path.DIRECTORY_SEPARATOR.trim($ex1).'.php';
                         }
                         else{
                             $class_namespace .= (empty($class_namespace))?trim($ex1):'\\'.trim($ex1);
-                            $full_middlewares_path .= '/'.trim($ex1);
+                            $full_middlewares_path .= DIRECTORY_SEPARATOR.trim($ex1);
                             if(!is_dir($full_middlewares_path)){
                                 mkdir($full_middlewares_path, 0777);
                             }
@@ -355,10 +355,10 @@ class Command {
         if(!is_null($arg)){
             $exs = explode('/',$arg);
             $controllers_path = (!empty($this->app->config->get('app.controllers')))?$this->app->config->get('app.controllers'):'controllers';
-            $full_controllers_path = realpath($this->base_path.'/'.$controllers_path);
+            $full_controllers_path = realpath($this->base_path.DIRECTORY_SEPARATOR.$controllers_path);
             if(count($exs) == 1){
                 if($this->validClassName(trim($arg))){
-                    $file_name = $full_controllers_path.'/'.trim($arg).'.php';
+                    $file_name = $full_controllers_path.DIRECTORY_SEPARATOR.trim($arg).'.php';
                     $class_name = trim($arg);
                     if(file_exists($file_name)){
                         echo "\033[1;33mController class already exist\033[0m\n";
@@ -407,11 +407,11 @@ class Command {
                         $i++;
                         if($i == count($exs)){
                             $class_name = trim($ex1);
-                            $file_name = $full_controllers_path.'/'.trim($ex1).'.php';
+                            $file_name = $full_controllers_path.DIRECTORY_SEPARATOR.trim($ex1).'.php';
                         }
                         else{
                             $class_namespace .= (empty($class_namespace))?trim($ex1):'\\'.trim($ex1);
-                            $full_controllers_path .= '/'.trim($ex1);
+                            $full_controllers_path .= DIRECTORY_SEPARATOR.trim($ex1);
                             if(!is_dir($full_controllers_path)){
                                 mkdir($full_controllers_path, 0777);
                             }
@@ -455,14 +455,14 @@ class Command {
     {
         if(!is_null($arg)){
             $exs = explode('/',$arg);
-            $full_models_path = realpath($this->base_path.'/models');
+            $full_models_path = realpath($this->base_path.DIRECTORY_SEPARATOR.'models');
             if(!$full_models_path){
-                mkdir($this->base_path.'/models', 0777);
+                mkdir($this->base_path.DIRECTORY_SEPARATOR.'models', 0777);
             }
-            $full_models_path = realpath($this->base_path.'/models');
+            $full_models_path = realpath($this->base_path.DIRECTORY_SEPARATOR.'models');
             if(count($exs) == 1){
                 if($this->validClassName(trim($arg))){
-                    $file_name = $full_models_path.'/'.trim($arg).'.php';
+                    $file_name = $full_models_path.DIRECTORY_SEPARATOR.trim($arg).'.php';
                     $class_name = trim($arg);
                     if(file_exists($file_name)){
                         echo "\033[1;33mModel class already exist\033[0m\n";
@@ -505,9 +505,9 @@ class Command {
 
     protected function cacheclear()
     {
-        $cache_path = (!empty($this->app->config->get('cache.path')))?$this->base_path.'/'.$this->app->config->get('cache.path'):'/tmp';
+        $cache_path = (!empty($this->app->config->get('cache.path')))?$this->base_path.DIRECTORY_SEPARATOR.$this->app->config->get('cache.path'):DIRECTORY_SEPARATOR.'tmp';
         if(realpath($cache_path)){
-            $files = glob($cache_path.'/*');
+            $files = glob($cache_path.DIRECTORY_SEPARATOR.'*');
             foreach($files as $file){ // iterate files
                 if(is_file($file))
                     unlink($file); // delete file
@@ -518,9 +518,9 @@ class Command {
 
     protected function viewclear()
     {
-        $complied_path = (!empty($this->app->config->get('view.compiled')))?$this->app->config->get('view.compiled'):$this->base_path.'/complied';
+        $complied_path = (!empty($this->app->config->get('view.compiled')))?$this->app->config->get('view.compiled'):$this->base_path.DIRECTORY_SEPARATOR.'complied';
         if(realpath($complied_path)){
-            $files = glob($complied_path.'/*');
+            $files = glob($complied_path.DIRECTORY_SEPARATOR.'*');
             foreach($files as $file){ // iterate files
                 if(is_file($file))
                     unlink($file); // delete file
@@ -534,14 +534,14 @@ class Command {
         if(!is_null($arg)){
             $exs = explode('.',$arg);
             $views_path = (!empty($this->app->config->get('view.path')))?$this->app->config->get('view.path'):'views';
-            $full_views_path = realpath($this->base_path.'/'.$views_path);
+            $full_views_path = realpath($this->base_path.DIRECTORY_SEPARATOR.$views_path);
             if(!$full_views_path){
-                mkdir($this->base_path.'/'.$views_path, 0777);
+                mkdir($this->base_path.DIRECTORY_SEPARATOR.$views_path, 0777);
             }
-            $full_views_path = realpath($this->base_path.'/'.$views_path);
+            $full_views_path = realpath($this->base_path.DIRECTORY_SEPARATOR.$views_path);
             if(count($exs) == 1){
                 if($this->validFileName(trim($arg))){
-                    $file_name = $full_views_path.'/'.trim($arg).'.blade.php';
+                    $file_name = $full_views_path.DIRECTORY_SEPARATOR.trim($arg).'.blade.php';
                     if(file_exists($file_name)){
                         echo "\033[1;33mView file already exist\033[0m\n";
                     }
@@ -574,10 +574,10 @@ class Command {
                         $i++;
                         if($i == count($exs)){
                             $class_name = trim($ex1);
-                            $file_name = $full_views_path.'/'.trim($ex1).'.blade.php';
+                            $file_name = $full_views_path.DIRECTORY_SEPARATOR.trim($ex1).'.blade.php';
                         }
                         else{
-                            $full_views_path .= '/'.trim($ex1);
+                            $full_views_path .= DIRECTORY_SEPARATOR.trim($ex1);
                             if(!is_dir($full_views_path)){
                                 mkdir($full_views_path, 0777);
                             }
@@ -729,11 +729,11 @@ MAIL_ENCRYPTION=null
 MAIL_FROM_ADDRESS=null
 MAIL_FROM_NAME="${APP_NAME}"';
         $random = base64_encode(Str::random(80,80));
-        if(!file_exists($this->base_path.'/.env')){
+        if(!file_exists($this->base_path.DIRECTORY_SEPARATOR.'.env')){
             $content_file = $default_env;
         }
         else{
-            $content_file = file_get_contents($this->base_path.'/.env');
+            $content_file = file_get_contents($this->base_path.DIRECTORY_SEPARATOR.'.env');
             if($content_file == ''){
                 $content_file = $default_env;
             }
@@ -749,7 +749,7 @@ MAIL_FROM_NAME="${APP_NAME}"';
                 $new_content .= $line."\n";
             }
         }
-        if($this->createFile($this->base_path.'/.env',$new_content)){
+        if($this->createFile($this->base_path.DIRECTORY_SEPARATOR.'.env',$new_content)){
             echo "\e[0;32mApplication key set successfully.\e[0m";
         }
         else{

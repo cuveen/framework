@@ -31,7 +31,7 @@ class RouterCommand
     public function getMiddlewareInfo()
     {
         return [
-            'path' => $this->baseFolder . '/' . $this->paths['middlewares'],
+            'path' => $this->baseFolder . DIRECTORY_SEPARATOR . $this->paths['middlewares'],
             'namespace' => $this->namespaces['middlewares'],
         ];
     }
@@ -39,7 +39,7 @@ class RouterCommand
     public function getControllerInfo()
     {
         return [
-            'path' => $this->baseFolder . '/' . $this->paths['controllers'],
+            'path' => $this->baseFolder . DIRECTORY_SEPARATOR . $this->paths['controllers'],
             'namespace' => $this->namespaces['controllers'],
         ];
     }
@@ -153,7 +153,7 @@ class RouterCommand
      */
     protected function resolveClass($class, $path, $namespace)
     {
-        $file = realpath(rtrim($path, '/') . '/' . $class . '.php');
+        $file = realpath(rtrim($path, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $class . '.php');
         if (! file_exists($file)) {
             return $this->exception($class . ' class is not found. Please, check file.');
         }

@@ -4,6 +4,8 @@
 namespace Cuveen\Config;
 
 
+use Cuveen\Helper\Arr;
+
 class Config
 {
     protected static $_instance;
@@ -12,14 +14,14 @@ class Config
     {
         /*LOAD CONFIG*/
         $data = array();
-        if ($handle = opendir($base_path . '/config/')) {
+        if ($handle = opendir($base_path . DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR)) {
             while (false !== ($entry = readdir($handle))) {
                 if ($entry != '.' && $entry != '..' && substr($entry, -4, 4) == '.php') {
                     if($entry != 'router.php'){
-                        if(!in_array($base_path . '/config/'.$entry,get_included_files())){
+                        if(!in_array($base_path . DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.$entry,get_included_files())){
                             $file_name = str_replace('.php','',$entry);
                             $file_name = mb_strtolower($file_name);
-                            $this->config[$file_name] = include ($base_path . '/config/'.$entry);
+                            $this->config[$file_name] = include ($base_path . DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.$entry);
                         }
                     }
                 }
@@ -37,7 +39,7 @@ class Config
 
     public function get($attr = false)
     {
-        $list_array = $this->array_dot($this->config);
+        $list_array = Arr::dot($this->config);
         if($attr) {
             if (isset($list_array[$attr])) {
                 return $list_array[$attr];

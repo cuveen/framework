@@ -11,8 +11,10 @@ use Cuveen\Database\DB;
 use Cuveen\Exception\CuveenException;
 use Cuveen\Scheduler\Scheduler;
 use Cuveen\Command\Command;
+use Dotenv\Dotenv;
 
 class App {
+    const VERSION = '1.0.0';
     protected $db;
     protected $request;
     protected $session;
@@ -23,7 +25,6 @@ class App {
     protected $view;
     public $base_path;
     public $app_path;
-    public $scheduler;
 
     public function __construct()
     {
@@ -32,6 +33,8 @@ class App {
         $base_path = realpath(getcwd());
         $this->app_path = __DIR__;
         $this->base_path = $base_path;
+        $dotenv = Dotenv::create([$this->base_path]);
+        $dotenv->load();
         $config = new Config($this->base_path);
         $this->request = new Request();
         $this->session = new Session();
@@ -42,10 +45,10 @@ class App {
         /*START DATABASE CONFIG*/
         if(!empty($config->get('database'))
             && $config->get('database.default') == 'mysql'
-            && !empty($config->get('database.connnections.mysql.host'))
-            && !empty($config->get('database.connnections.mysql.username'))
-            && !empty($config->get('database.connnections.mysql.password'))
-            && !empty($config->get('database.connnections.mysql.database'))
+            && !empty($config->get('database.connections.mysql.host'))
+            && !empty($config->get('database.connections.mysql.username'))
+            && !empty($config->get('database.connections.mysql.password'))
+            && !empty($config->get('database.connections.mysql.database'))
         ){
             $database_port = (!empty($config->get('database.connections.mysql.port')))? $config->get('database.connections.mysql.port'):3306;
             $database_charset = (!empty($config->get('database.connections.mysql.charset')))? $config->get('database.connections.mysql.charset'):'utf8';
@@ -56,7 +59,7 @@ class App {
         }
         $this->auth = new Auth();
         $this->config = $config;
-        $cache_path = (!empty($this->config->get('cache.path')))?$this->config->get('cache.path'):'/tmp';
+        $cache_path = (!empty($this->config->get('cache.path')))?$this->config->get('cache.path'):DIRECTORY_SEPARATOR.'tmp';
         $controllers_path = (!empty($this->config->get('app.controllers')))?$this->config->get('app.controllers'):'controllers';
         $middlewares_path = (!empty($this->config->get('middleware.path')))?$this->config->get('middleware.path'):'middlewares';
         $router = new Router(array(
@@ -65,26 +68,25 @@ class App {
                 'middlewares'=> $middlewares_path
             ),
             'base_folder'=> $this->base_path,
-            'cache' => $cache_path.'/app.router.php'
+            'cache' => $cache_path.DIRECTORY_SEPARATOR.'app.router.php'
         ));
-        if(file_exists($this->base_path.'/config/router.php')){
-            include($this->base_path.'/config/router.php');
+        if(file_exists($this->base_path.DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.'router.php')){
+            include($this->base_path.DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.'router.php');
         }
         $this->request->routes = $router->getRoutes();
         $this->router = $router;
-        $this->scheduler = new Scheduler();
     }
 
     public function run()
     {
         $view_path = (!empty($this->config->get('view.path')))?$this->config->get('view.path'):'views';
-        $view_compiled = (!empty($this->config->get('view.compiled')))?$this->config->get('view.compiled'):$this->base_path.'/compiled';
-        $this->view = new View($this->base_path.'/'.$view_path,$view_compiled,View::MODE_AUTO);
+        $view_compiled = (!empty($this->config->get('view.compiled')))?$this->config->get('view.compiled'):$this->base_path.DIRECTORY_SEPARATOR.'compiled';
+        $this->view = new View($this->base_path.DIRECTORY_SEPARATOR.$view_path,$view_compiled,View::MODE_AUTO);
         /*LOAD HELPER*/
-        if (is_dir($this->base_path . '/helpers/') && $handle = opendir($this->base_path . '/helpers/')) {
+        if (is_dir($this->base_path . DIRECTORY_SEPARATOR.'helpers'.DIRECTORY_SEPARATOR) && $handle = opendir($this->base_path . DIRECTORY_SEPARATOR.'helpers'.DIRECTORY_SEPARATOR)) {
             while (false !== ($entry = readdir($handle))) {
                 if ($entry != '.' && $entry != '..' && substr($entry, -4, 4) == '.php') {
-                    include($this->base_path.'/helpers/'.$entry);
+                    include($this->base_path.DIRECTORY_SEPARATOR.'helpers'.DIRECTORY_SEPARATOR.$entry);
                 }
             }
             closedir($handle);
@@ -94,11 +96,6 @@ class App {
         if(isset($this->db)) {
             $this->db->disconnectAll();
         }
-    }
-
-    public function scheduler()
-    {
-        return new Scheduler();
     }
 
     public function exeption($message)

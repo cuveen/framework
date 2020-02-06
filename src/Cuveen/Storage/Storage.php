@@ -21,7 +21,7 @@ class Storage
         if(empty($suggestedFilename)){
             $suggestedFilename = basename($filePath);
         }
-        $fileRoot = (strpos($filePath, $this->config->get('base_path')) !== false)?realpath($this->config->get('base_path').'/'.$filePath):$filePath;
+        $fileRoot = (strpos($filePath, $this->config->get('base_path')) !== false)?realpath($this->config->get('base_path').DIRECTORY_SEPARATOR.$filePath):$filePath;
         if (\file_exists($fileRoot) && \is_file($fileRoot)) {
             if ($mimeType === null) {
                 // use a reasonable default value
@@ -47,7 +47,7 @@ class Storage
 
     public function serveFile($filePath, $mimeType) {
         // if the file exists at the specified path
-        $fileRoot = (strpos($filePath, $this->config->get('base_path')) !== false)?realpath($this->config->get('base_path').'/'.$filePath):$filePath;
+        $fileRoot = (strpos($filePath, $this->config->get('base_path')) !== false)?realpath($this->config->get('base_path').DIRECTORY_SEPARATOR.$filePath):$filePath;
         if (\file_exists($fileRoot) && \is_file($fileRoot)) {
             \header('Content-Type: ' . $mimeType, true);
             \header('Accept-Ranges: none', true);

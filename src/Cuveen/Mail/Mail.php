@@ -52,10 +52,10 @@ class Mail
 
     private function getAll($base_path)
     {
-        if ($handle = opendir($base_path . '/mail/')) {
+        if ($handle = opendir($base_path . DIRECTORY_SEPARATOR.'mail'.DIRECTORY_SEPARATOR)) {
             while (false !== ($entry = readdir($handle))) {
                 if ($entry != '.' && $entry != '..' && substr($entry, -4, 4) == '.php') {
-                    include($base_path.'/mail/'.$entry);
+                    include($base_path.DIRECTORY_SEPARATOR.'mail'.DIRECTORY_SEPARATOR.$entry);
                 }
             }
             closedir($handle);

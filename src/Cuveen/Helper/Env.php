@@ -58,7 +58,7 @@ class Env
     /**
      * Get the environment factory instance.
      *
-     * @return \Dotenv\Environment\FactoryInterface
+     * @return c
      */
     public static function getFactory()
     {
@@ -84,7 +84,6 @@ class Env
         if (static::$variables === null) {
             static::$variables = static::getFactory()->createImmutable();
         }
-
         return static::$variables;
     }
 
