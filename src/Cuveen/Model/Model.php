@@ -17,6 +17,19 @@ class Model
     const CREATED_AT = 'created_at';
     const UPDATED_AT = 'updated_at';
 
+    /*Relationship variables*/
+    private $_relationships = array();
+    public $has_one = array();
+    public $has_many = array();
+    public $separate_subqueries = TRUE;
+    private $_requested = array();
+    protected $after_get = array();
+    protected $relation;
+    protected $foreign_key;
+    protected $local_key;
+    protected $options;
+
+
     public function __construct($db)
     {
         if(is_null($this->table)){
@@ -24,7 +37,6 @@ class Model
         }
         $this->singularName = DatabaseTable::singularize($this->table);
         $this->db = $db;
-        $this->db->objectBuilder();
     }
 
     public function limit($num)
@@ -72,7 +84,10 @@ class Model
 
     public function get($numRows = null, $columns = '*')
     {
-        return $this->db->get($this->table, $numRows, $columns);
+        $this->trigger('before_get');
+        $data = $this->db->get($this->table, $numRows, $columns);
+        $data = $this->trigger('after_get',$data);
+        return $data;
     }
 
     public function totalPages()
@@ -107,6 +122,24 @@ class Model
         return $this;
     }
 
+    public function whereIn($whereProp, $whereValue = 'DBNULL')
+    {
+        $this->where($whereProp,$whereValue,'IN');
+        return $this;
+    }
+
+    public function WhereNotIn($whereProp, $whereValue = 'DBNULL')
+    {
+        $this->where($whereProp,$whereValue,'NOT IN');
+        return $this;
+    }
+
+    public function like($whereProp, $whereValue = 'DBNULL')
+    {
+        $this->where($whereProp, $whereValue, 'like');
+        return $this;
+    }
+
     public function orWhere($whereProp, $whereValue = 'DBNULL', $operator = '=')
     {
         $this->where($whereProp, $whereValue, $operator, 'OR');
@@ -125,7 +158,7 @@ class Model
 
     public function join($joinTable, $joinCondition, $joinType = '')
     {
-        $this->db->where($joinTable, $joinCondition, $joinType);
+        $this->db->join($joinTable, $joinCondition, $joinType);
         return $this;
     }
 
@@ -138,6 +171,145 @@ class Model
     public function groupBy($groupByField)
     {
         $this->db->groupBy($groupByField);
+        return $this;
+    }
+
+    /** RELATIONSHIPS */
+
+    /**
+     * public function with($requests)
+     * allows the user to retrieve records from other interconnected tables depending on the relations defined before the constructor
+     * @param string $requests
+     * @param bool $separate_subqueries
+     * @return $this
+     */
+    public function with($requests)
+    {
+        $requests = explode(',', $requests);
+        if(!is_array($requests)) $requests[0] = $requests;
+        foreach($requests as $request)
+        {
+            $this->_relationships[$request] = $this->$request();
+        }
+        $this->after_get[] = 'join_temporary_results';
+        return $this;
+    }
+
+    public function trigger($event, $data = array(), $last = TRUE)
+    {
+        if (isset($this->$event) && is_array($this->$event))
+        {
+            foreach ($this->$event as $method)
+            {
+                if (strpos($method, '('))
+                {
+                    preg_match('/([a-zA-Z0-9\_\-]+)(\(([a-zA-Z0-9\_\-\., ]+)\))?/', $method, $matches);
+                    $method = $matches[1];
+                    $this->callback_parameters = explode(',', $matches[3]);
+                }
+                $data = call_user_func_array(array($this, $method), array($data, $last));
+            }
+        }
+        return $data;
+    }
+
+    public function isAssoc(array $arr)
+    {
+        if (array() === $arr) return false;
+        return array_keys($arr) !== range(0, count($arr) - 1);
+    }
+
+    /**
+     * protected function join_temporary_results($data)
+     * Joins the subquery results to the main $data
+     * @param $data
+     * @return mixed
+     */
+    protected function join_temporary_results($data)
+    {
+        $data = (sizeof($data)==1) ? array([0]=>$data) : $data;
+        $data = json_decode(json_encode($data), TRUE);
+        foreach($this->_relationships as $relation_key=>$relation){
+            $local_key_values = array();
+            foreach($data as $key => $element)
+            {
+                $local_key_values[$key] = $element[$relation->local_key];
+            }
+            $sub_results = $relation->where($relation->foreign_key,$local_key_values, 'IN');
+            $limit = null;
+            if(isset($relation->options) && is_array($relation->options)){
+                foreach($relation->options as $key=>$item){
+                    if($key == 'order'){
+                        $order_by = is_array($item)?$item[0]:$item;
+                        $order_sort = (is_array($item) && isset($item[1]))?$item[1]:'ASC';
+                        $this->orderBy($order_by, $order_sort);
+                    }
+                    if($key == 'where' || $key == 'like'){
+                        if(is_array($item) && count($item) > 0){
+                            if($this->isAssoc($item)){
+                                foreach($item as $keyw => $value){
+                                    $this->$key($keyw, $value);
+                                }
+                            }
+                            elseif(count($item) == 2){
+                                $this->$key($item[0],$item[1]);
+                            }
+                            elseif($key == 'where'){
+                                $this->where($item[0]);
+                            }
+                        }
+                        elseif($key == 'where' && !is_array($item)){
+                            $this->where($item);
+                        }
+                    }
+                    if($key == 'limit'){
+                        $limit = $item;
+                    }
+                }
+            }
+            if($relation->relation == 'hasOne') {
+                $sub_results = $sub_results->getOne();
+            }
+            else{
+                $sub_results = $sub_results->get($limit);
+            }
+
+            foreach($sub_results as $result)
+            {
+                if(in_array($result[$relation->foreign_key], $local_key_values))
+                {
+                    $reverse_values = array_flip($local_key_values);
+                    if($relation->relation=='hasOne') {
+                        $data[$reverse_values[$result[$relation->foreign_key]]][$relation_key] = $result;
+                    }
+                    else
+                    {
+                        $data[$reverse_values[$result[$relation->foreign_key]]][$relation_key][] = $result;
+                    }
+                }
+            }
+            unset($this->_relationships[$relation_key]);
+        }
+        return json_decode(json_encode($data), FALSE);
+    }
+
+    public function hasMany($model, $foreign_key = null, $local_key = null)
+    {
+        if(class_exists($model)) {
+            $class_name = $this->className($model);
+            $class = new $model($this->db);
+            $foreign_key = is_null($foreign_key)?DatabaseTable::singularize($this->table).'_'.$this->primaryKey:$foreign_key;
+            $local_key = is_null($local_key)?$class->primaryKey:$local_key;
+            $class->foreign_key = $foreign_key;
+            $class->local_key = $local_key;
+            $class->relation = 'hasMany';
+            return $class;
+        }
+    }
+
+    public function option($options = [])
+    {
+        $this->options = $options;
         return $this;
     }
 }
