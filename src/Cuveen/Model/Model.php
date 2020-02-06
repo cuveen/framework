@@ -19,10 +19,7 @@ class Model
 
     /*Relationship variables*/
     private $_relationships = array();
-    public $has_one = array();
-    public $has_many = array();
     public $separate_subqueries = TRUE;
-    private $_requested = array();
     protected $after_get = array();
     protected $relation;
     protected $foreign_key;
@@ -231,11 +228,14 @@ class Model
         $data = json_decode(json_encode($data), TRUE);
         foreach($this->_relationships as $relation_key=>$relation){
             $local_key_values = array();
+
             foreach($data as $key => $element)
             {
                 $local_key_values[$key] = $element[$relation->local_key];
             }
-            $sub_results = $relation->where($relation->foreign_key,$local_key_values, 'IN');
+            if($relation->relation == 'hasMany' || $relation->relation == 'hasOne') {
+                $sub_results = $relation->where($relation->foreign_key, $local_key_values, 'IN');
+            }
             $limit = null;
             if(isset($relation->options) && is_array($relation->options)){
                 foreach($relation->options as $key=>$item){
@@ -267,20 +267,18 @@ class Model
                     }
                 }
             }
-            if($relation->relation == 'hasOne') {
-                $sub_results = $sub_results->getOne();
-            }
-            else{
-                $sub_results = $sub_results->get($limit);
-            }
-
+            $sub_results = $sub_results->get($limit);
             foreach($sub_results as $result)
             {
                 if(in_array($result[$relation->foreign_key], $local_key_values))
                 {
                     $reverse_values = array_flip($local_key_values);
                     if($relation->relation=='hasOne') {
-                        $data[$reverse_values[$result[$relation->foreign_key]]][$relation_key] = $result;
+                        foreach($data as $keyd =>$item){
+                            if($item[$relation->local_key] == $result[$relation->foreign_key]){
+                                $data[$keyd][$relation_key] = $result;
+                            }
+                        }
                     }
                     else
                     {
@@ -305,6 +303,30 @@ class Model
             $class->relation = 'hasMany';
             return $class;
         }
+    }
+
+    public function hasOne($model, $foreign_key = null, $local_key = null)
+    {
+        if(class_exists($model)) {
+            $class_name = $this->className($model);
+            $class = new $model($this->db);
+            $local_key = is_null($local_key)?DatabaseTable::singularize($class->table).'_'.$class->primaryKey:$foreign_key;
+            $foreign_key = is_null($foreign_key)?$class->primaryKey:$local_key;
+            $class->foreign_key = $foreign_key;
+            $class->local_key = $local_key;
+            $class->relation = 'hasOne';
+            return $class;
+        }
+    }
+
+    public function belongsTo($model, $foreign_key = null, $local_key = null)
+    {
+
+    }
+
+    public function belongsToMany($model, $foreign_table = null, $local_key = null, $foreign_key)
+    {
+
     }
 
     public function option($options = [])
