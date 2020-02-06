@@ -23,6 +23,12 @@ class Model
         $this->db->objectBuilder();
     }
 
+    public function limit($num)
+    {
+        $this->pageLimit = $num;
+        return $this;
+    }
+
     public function count()
     {
         return $this->db->count;
@@ -38,7 +44,7 @@ class Model
 
     public function getOne($columns = '*')
     {
-        return $this->db->getOne($table, $columns);
+        return $this->db->getOne($this->table, $columns);
     }
 
     public function getValue($column, $limit = 1)
@@ -48,29 +54,35 @@ class Model
 
     public function insert($data)
     {
-        $result = $this->db->insert($table, $data);
+        $result = $this->db->insert($this->table, $data);
         $this->insert_id = $this->db->getInsertId();
         return $result;
     }
 
     public function get($numRows = null, $columns = '*')
     {
-        return $this->db->get($table, $numRows, $columns);
+        return $this->db->get($this->table, $numRows, $columns);
+    }
+
+    public function totalPages()
+    {
+        return $this->db->totalPages;
     }
 
     public function paginate($page, $fields = null)
     {
-        return $this->db->paginate($table, $page, $fields);
+        $this->db->pageLimit  = $this->pageLimit;
+        return $this->db->paginate($this->table, $page, $fields);
     }
 
     public function delete($numRows = null)
     {
-        return $this->db->delete($table, $numRows);
+        return $this->db->delete($this->table, $numRows);
     }
 
     public function update($data, $numRows = null)
     {
-        return $this->db->update($table, $data, $numRows);
+        return $this->db->update($this->table, $data, $numRows);
     }
 
     public function where($whereProp, $whereValue = 'DBNULL', $operator = '=', $cond = 'AND')
