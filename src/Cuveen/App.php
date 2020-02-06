@@ -26,6 +26,7 @@ class App {
     protected $view;
     public $base_path;
     public $app_path;
+    public $scheduler;
 
     public function __construct()
     {
@@ -39,6 +40,7 @@ class App {
         $config = new Config($this->base_path);
         $this->request = new Request();
         $this->session = new Session();
+        $this->scheduler = new Scheduler();
         /*START APP SESSION*/
         $this->session->start();
         $this->security = new Security();
