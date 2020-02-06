@@ -214,4 +214,13 @@ class Security
             return 0;
         }
     }
+
+    public function getToken()
+    {
+        if (isset($_SESSION['cuveen_framework_security']['csrf'])) {
+            return array_key_first($_SESSION['cuveen_framework_security']['csrf']);
+        } else {
+            return false;
+        }
+    }
 }

@@ -47,9 +47,9 @@ class Response
 
     }
 
-    public function cookie($cookie)
+    public function cookie($name, $cookie)
     {
-        Cookie::setcookie($cookie);
+        Cookie::setcookie($name, $cookie);
         return $this;
     }
 

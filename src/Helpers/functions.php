@@ -109,13 +109,13 @@ function auth()
 function csrf_field()
 {
     $security = Security::getInstance();
-    return '<input type="hidden" name="_token" value="' . $security->GenerateTokens(3, 60) . '">';
+    return '<input type="hidden" name="_token" value="' . $security->getToken() . '">';
 }
 
 function csrf_token()
 {
     $security = Security::getInstance();
-    return $security->GenerateTokens(3, 60);
+    return $security->getToken();
 }
 
 function validate($arrs = array())

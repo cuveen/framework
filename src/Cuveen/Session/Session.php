@@ -33,7 +33,7 @@ class Session {
         $request = Request::getInstance();
         session_set_cookie_params(
             $lifetime,
-            $path,
+            $cookieParams['path'],
             $request->domain,
             false,
             true
