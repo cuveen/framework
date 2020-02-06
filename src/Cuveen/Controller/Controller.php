@@ -19,7 +19,6 @@ class Controller
     protected $session;
     protected $security;
     public $config;
-    public $router;
     protected $auth;
     protected $view;
     public function __construct()
