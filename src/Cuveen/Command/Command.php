@@ -629,15 +629,6 @@ class Command {
             }
         }
         $table->display();
-//        echo "+------------------".($this->returnLine($this->mostLenght($routes), 'URI'))."-".($this->returnLine($this->mostLenght($routes,'name'), 'Name'))."-".($this->returnLine($this->mostLenght($routes,'callback'), 'Action'))."-".($this->returnLine($this->mostLenght($routes,'before'), 'Before'))."-".($this->returnLine($this->mostLenght($routes,'after'), 'After'))."+\n";
-//        echo "| \e[0;32mDomain\e[0m | \e[0;32mMethod\e[0m |\e[0;32m".($this->returnSpace($this->mostLenght($routes), 'URI'))."\e[0m|\e[0;32m".($this->returnSpace($this->mostLenght($routes,'name'), 'Name'))."\e[0m|\e[0;32m".($this->returnSpace($this->mostLenght($routes,'callback'), 'Action'))."\e[0m|\e[0;32m".($this->returnSpace($this->mostLenght($routes,'before'), 'Before'))."\e[0m|\e[0;32m".($this->returnSpace($this->mostLenght($routes,'after'), 'After'))."\e[0m|\n";
-//        echo "+------------------".($this->returnLine($this->mostLenght($routes), 'URI'))."-".($this->returnLine($this->mostLenght($routes,'name'), 'Name'))."-".($this->returnLine($this->mostLenght($routes,'callback'), 'Action'))."-".($this->returnLine($this->mostLenght($routes,'before'), 'Before'))."-".($this->returnLine($this->mostLenght($routes,'after'), 'After'))."+\n";
-//        if(count($routes) > 0){
-//            foreach($routes as $route){
-//                echo "|        |".($this->returnSpace($this->mostLenght($routes, 'method'), $route['method'], 'Method'))."|".($this->returnSpace($this->mostLenght($routes), $this->convertType($route['route']), 'URI'))."|".($this->returnSpace($this->mostLenght($routes,'name'), $this->convertType($route['name'])))."|".($this->returnSpace($this->mostLenght($routes,'callback'), $this->convertType($route['callback'],'callback')))."|".($this->returnSpace($this->mostLenght($routes,'before'), $this->convertType($route['before'],'before')))."|".($this->returnSpace($this->mostLenght($routes,'after'), $this->convertType($route['after'],'after')))."|\n";
-//                echo "+------------------".($this->returnLine($this->mostLenght($routes), $this->convertType($route['route']),'URI'))."-".($this->returnLine($this->mostLenght($routes,'name'), $this->convertType($route['name'])))."-".($this->returnLine($this->mostLenght($routes,'callback'), $this->convertType($route['callback'],'callback')))."-".($this->returnLine($this->mostLenght($routes,'before'), $this->convertType($route['before'],'before')))."-".($this->returnLine($this->mostLenght($routes,'after'), $this->convertType($route['after'],'after')))."+\n";
-//            }
-//        }
 
     }
 
