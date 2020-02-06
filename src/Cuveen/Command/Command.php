@@ -1,6 +1,7 @@
 <?php
 namespace Cuveen\Command;
 
+use Cuveen\App;
 use Cuveen\Helper\Str;
 
 class Command {
@@ -67,12 +68,7 @@ class Command {
                 }
                 elseif($command == '-v'){
                     // Display version
-                    $composer_file = $this->base_path.DIRECTORY_SEPARATOR.'composer.json';
-                    if(!file_exists($composer_file)){
-                        echo "\033[1;31mThis app did not installation via composer\033[0m\n";
-                    }
-                    else {
-                    }
+                    echo 'Cuveen '.App::VERSION;
                 }
                 else{
                     echo "\033[1;31mCommand `".$command."` is not valid\033[0m\n";
