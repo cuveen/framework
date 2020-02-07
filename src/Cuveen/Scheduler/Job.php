@@ -1,6 +1,7 @@
 <?php
 namespace Cuveen\Scheduler;
 
+use Cuveen\Cron\CronExpression;
 use DateTime;
 use Exception;
 use InvalidArgumentException;
@@ -48,7 +49,7 @@ class Job
     /**
      * Job schedule time.
      *
-     * @var Cron\CronExpression
+     * @var CronExpression
      */
     private $executionTime;
 

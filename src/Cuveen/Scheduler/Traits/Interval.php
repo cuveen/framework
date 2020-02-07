@@ -2,7 +2,7 @@
 namespace Cuveen\Scheduler\Traits;
 
 use DateTime;
-use Cron\CronExpression;
+use Cuveen\Cron\CronExpression;
 use InvalidArgumentException;
 
 trait Interval
