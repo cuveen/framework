@@ -33,10 +33,11 @@ class Controller
         $this->router = Router::getInstance();
         $this->base_path = $this->config->get('base_path');
     }
-    public function model($model)
+    public function model($model, $attr = false)
     {
         if(file_exists($this->base_path.DIRECTORY_SEPARATOR.'models'.DIRECTORY_SEPARATOR.$model.'.php')){
-            return Model::factory($model);
+            $name = $attr?$attr:mb_strtolower($model).'_model';
+            $this->$name = Model::factory($model);
         }
         else{
             return $this->exception('Can not find model '.$model);
