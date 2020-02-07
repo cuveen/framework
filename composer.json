@@ -25,7 +25,7 @@
     },
     "autoload": {
         "files": [
-            "src/Cuveen/Helpers/functions.php"
+            "src/Cuveen/Helper/functions.php"
         ],
         "psr-4": {
             "Cuveen\\": "src/Cuveen/"
