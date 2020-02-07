@@ -132,3 +132,6 @@ function response($content = '', $code = 200)
     $response = new Response($content, $code);
     return $response;
 }
+function app(){
+    return new Cuveen\Controller\Controller();
+}

@@ -4,6 +4,7 @@
 namespace Cuveen\Controller;
 use Cuveen\Auth\Auth;
 use Cuveen\Config\Config;
+use Cuveen\Database\Database;
 use Cuveen\Exception\CuveenException;
 use Cuveen\Hash\Security;
 use Cuveen\Http\Request;
@@ -38,6 +39,7 @@ class Controller
         if(file_exists($this->base_path.DIRECTORY_SEPARATOR.'models'.DIRECTORY_SEPARATOR.$model.'.php')){
             $name = $attr?$attr:mb_strtolower($model).'_model';
             $this->$name = Model::factory($model);
+            return $this;
         }
         else{
             return $this->exception('Can not find model '.$model);
