@@ -183,6 +183,12 @@ class Database implements \ArrayAccess {
     // The name of the table the current ORM instance is associated with
     protected $_table_name;
 
+    protected $_created_at = 'created_at';
+
+    protected $_updated_at = 'updated_at';
+
+    protected $_timestamp = true;
+
     // prefix table
     protected $_table_prefix;
 
@@ -670,6 +676,21 @@ class Database implements \ArrayAccess {
     public function use_id_column($id_column) {
         $this->_instance_id_column = $id_column;
         return $this;
+    }
+
+    public function set_timestamp($timestamp)
+    {
+        $this->_timestamp = $timestamp;
+    }
+
+    public function set_created_at($column)
+    {
+        $this->_created_at = $column;
+    }
+
+    public function set_updated_at($column)
+    {
+        $this->_updated_at = $column;
     }
 
     /**
@@ -2035,11 +2056,11 @@ class Database implements \ArrayAccess {
             if (is_array($id)) {
                 foreach ($id as $id_part) {
                     if ($id_part === null) {
-                        throw new Exception('Primary key ID contains null value(s)');
+                        throw new \Exception('Primary key ID contains null value(s)');
                     }
                 }
             } else if ($id === null) {
-                throw new Exception('Primary key ID missing from row or is null');
+                throw new \Exception('Primary key ID missing from row or is null');
             }
         }
 
@@ -2115,6 +2136,15 @@ class Database implements \ArrayAccess {
     public function save() {
         $query = array();
 
+        if($this->_timestamp){
+            if (!isset($this->_dirty_fields[$this->_updated_at]) || empty($this->_dirty_fields[$this->_updated_at])) {
+                $this->_dirty_fields[$this->_updated_at] = date('Y-m-d H:i:s');
+            }
+            if($this->_is_new && (!isset($this->_dirty_fields[$this->_created_at]) || empty($this->_dirty_fields[$this->_created_at]))){
+                $this->_dirty_fields[$this->_created_at] = date('Y-m-d H:i:s');
+            }
+        }
+
         // remove any expression fields as they are already baked into the query
         $values = array_values(array_diff_key($this->_dirty_fields, $this->_expr_fields));
 
@@ -2123,6 +2153,8 @@ class Database implements \ArrayAccess {
             if (empty($values) && empty($this->_expr_fields)) {
                 return true;
             }
+            /*TIME STAMP*/
+
             $query = $this->_build_update();
             $id = $this->id(true);
             if (is_array($id)) {
@@ -2133,7 +2165,6 @@ class Database implements \ArrayAccess {
         } else { // INSERT
             $query = $this->_build_insert();
         }
-
         $success = self::_execute($query, $values, $this->_connection_name);
         $caching_auto_clear_enabled = self::$_config[$this->_connection_name]['caching_auto_clear'];
         if($caching_auto_clear_enabled){
@@ -2192,6 +2223,8 @@ class Database implements \ArrayAccess {
     protected function _build_update() {
         $query = array();
         $query[] = "UPDATE {$this->_quote_identifier($this->_table_name)} SET";
+
+
 
         $field_list = array();
         foreach ($this->_dirty_fields as $key => $value) {

@@ -193,6 +193,9 @@ class Model {
         $real_class_name = strpos($class_name,'Cuveen\Model') !== false?$class_name:'Cuveen\Model\\'.$class_name;
         $class_name = self::$auto_prefix_models . $class_name;
         $table_name = self::_get_table_name($real_class_name);
+        $timestamp = self::_get_static_property($real_class_name,'_timestamp',true);
+        $set_created_at = self::_get_static_property($real_class_name,'_created_at','created_at');
+        $set_updated_at = self::_get_static_property($real_class_name,'_updated_at','updated_at');
         if(is_null(self::_get_static_property($real_class_name, '_table'))){
             $table_name = Str::pluralize($table_name);
         }
@@ -206,6 +209,9 @@ class Model {
         $table_name = str_replace('cuveen_model_','',$table_name);
         $wrapper = DatabaseWrapper::for_table($table_name, $connection_name);
         $wrapper->set_class_name($real_class_name);
+        $wrapper->set_timestamp($timestamp);
+        $wrapper->set_created_at($set_created_at);
+        $wrapper->set_updated_at($set_updated_at);
         $wrapper->use_id_column(self::_get_id_column_name($real_class_name));
         return $wrapper;
     }
@@ -404,8 +410,8 @@ class Model {
      * @param  string $property
      * @return string
      */
-    public function get($property) {
-        return $this->orm->get($property);
+    public function get_attr($property) {
+        return $this->orm->get_attr($property);
     }
 
     /**
