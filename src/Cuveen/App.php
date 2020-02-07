@@ -1,5 +1,6 @@
 <?php
 namespace Cuveen;
+use Cuveen\Database\Database;
 use Cuveen\Hash\Security;
 use Cuveen\Http\Cookie;
 use Cuveen\Session\Session;
@@ -8,7 +9,6 @@ use Cuveen\Router\Router;
 use Cuveen\View\View;
 use Cuveen\Config\Config;
 use Cuveen\Auth\Auth;
-use Cuveen\Database\DB;
 use Cuveen\Exception\CuveenException;
 use Cuveen\Scheduler\Scheduler;
 use Cuveen\Command\Command;
@@ -57,10 +57,17 @@ class App {
         ){
             $database_port = (!empty($config->get('database.connections.mysql.port')))? $config->get('database.connections.mysql.port'):3306;
             $database_charset = (!empty($config->get('database.connections.mysql.charset')))? $config->get('database.connections.mysql.charset'):'utf8';
-            $this->db = new DB($config->get('database.connections.mysql.host'), $config->get('database.connections.mysql.username'), $config->get('database.connections.mysql.password'), $config->get('database.connections.mysql.database'), $database_port, $database_charset);
-            if(!empty($config->get('database.connections.mysql.prefix'))){
-                $this->db->setPrefix($config->get('database.connections.mysql.prefix'));
-            }
+            Database::configure('mysql:host='.$config->get('database.connections.mysql.host').';dbport='.$database_port.';dbname='.$config->get('database.connections.mysql.database').';charset='.$database_charset);
+            Database::configure('username',$config->get('database.connections.mysql.username'));
+            Database::configure('password',$config->get('database.connections.mysql.password'));
+//            $this->db = Database::new('mysql:host='.$config->get('database.connections.mysql.host').';dbport='.$database_port.';dbname='.$config->get('database.connections.mysql.database').';charset='.$database_charset,
+//                $config->get('database.connections.mysql.username'),
+//                $config->get('database.connections.mysql.password'),
+//                AutoTransact::class
+//            );
+//            if(!empty($config->get('database.connections.mysql.prefix'))){
+////                $this->db->setPrefix($config->get('database.connections.mysql.prefix'));
+//            }
         }
         $this->auth = new Auth();
         $cache_path = (!empty($this->config->get('cache.path')))?$this->config->get('cache.path'):DIRECTORY_SEPARATOR.'tmp';
@@ -113,9 +120,6 @@ class App {
         }
         /*START ROUTING*/
         $this->router->run();
-        if(!is_null($this->db)) {
-            $this->db->disconnectAll();
-        }
     }
 
     public function exeption($message)
