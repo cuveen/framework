@@ -85,6 +85,8 @@ namespace Cuveen\Database;
  * @method $this whereLte($column_name, $value=null)
  * @method $this whereIn($column_name, $values)
  * @method $this whereNotIn($column_name, $values)
+ * @method $this wherePivot($column_name, $values)
+ * @method $this withPivot($arr)
  * @method $this whereNull($column_name)
  * @method $this whereNotNull($column_name)
  * @method $this whereRaw($clause, $parameters=array())
@@ -199,6 +201,9 @@ class Database implements \ArrayAccess {
     // Join sources
     protected $_join_sources = array();
 
+    // Join tables
+    protected $_join_tables = array();
+
     // Should the query include a DISTINCT keyword?
     protected $_distinct = false;
 
@@ -228,6 +233,8 @@ class Database implements \ArrayAccess {
 
     // HAVING
     protected $_having_conditions = array();
+
+    protected $_pivots = array();
 
     // The data for a hydrated instance of the class
     protected $_data = array();
@@ -1045,6 +1052,7 @@ class Database implements \ArrayAccess {
             $second_column = $this->_quote_identifier($second_column);
             $constraint = "{$first_column} {$operator} {$second_column}";
         }
+        $this->_join_tables[] = $table;
 
         $this->_join_sources[] = "{$join_operator} {$table} ON {$constraint}";
         return $this;
@@ -1377,6 +1385,7 @@ class Database implements \ArrayAccess {
             $this->where_in($this->_get_id_column_name(), $ids);
     }
 
+
     /**
      * Add a WHERE ... LIKE clause to your query.
      */
@@ -1639,6 +1648,36 @@ class Database implements \ArrayAccess {
         return $this->_add_having($clause, $parameters);
     }
 
+    /*Relationship functions*/
+    protected function is_assoc(array $arr)
+    {
+        if (array() === $arr) return false;
+        return array_keys($arr) !== range(0, count($arr) - 1);
+    }
+    public function where_pivot($column_name, $value=null)
+    {
+        if(count($this->_join_tables) == 1){
+            $table_pivot = $this->_join_tables[0];
+            $this->_join_sources[0] .= " AND {$table_pivot}.{$column_name} = '{$value}'";
+        }
+        return $this;
+    }
+
+    public function with_pivot($arr)
+    {
+        $args = is_array($arr)?$arr:[$arr];
+        if(!$this->is_assoc($args)){
+            if(count($this->_join_tables) == 1){
+                $table_pivot = $this->_join_tables[0];
+                foreach($args as $key=>$item){
+                    $this->_add_result_column($table_pivot.'.'.$item.' as pivot_'.$item);
+                }
+            }
+        }
+        return $this;
+    }
+
+
     /**
      * Build a SELECT statement based on the clauses that have
      * been passed to this instance by chaining method calls.
@@ -1713,6 +1752,7 @@ class Database implements \ArrayAccess {
     protected function _build_having() {
         return $this->_build_conditions('having');
     }
+
 
     /**
      * Build GROUP BY
@@ -1959,7 +1999,7 @@ class Database implements \ArrayAccess {
      * If a column-names array is passed, it will return a associative array
      * with the value of each column or null if it is not present.
      */
-    public function get($key) {
+    public function get_attr($key) {
         if (is_array($key)) {
             $result = array();
             foreach($key as $column) {
@@ -1989,7 +2029,7 @@ class Database implements \ArrayAccess {
      * Get the primary key ID of this object.
      */
     public function id($disallow_null = false) {
-        $id = $this->get($this->_get_id_column_name());
+        $id = $this->get_attr($this->_get_id_column_name());
 
         if ($disallow_null) {
             if (is_array($id)) {
@@ -2221,7 +2261,7 @@ class Database implements \ArrayAccess {
     }
 
     public function offsetGet($key) {
-        return $this->get($key);
+        return $this->get_attr($key);
     }
 
     public function offsetSet($key, $value) {

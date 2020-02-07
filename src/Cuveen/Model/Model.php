@@ -107,7 +107,7 @@ class Model {
         }
 
         if (is_null($specified_table_name)) {
-            return self::_class_name_to_table_name($class_name);
+            return Str::pluralize(self::_class_name_to_table_name($class_name));
         }
         return $specified_table_name;
     }
@@ -173,7 +173,7 @@ class Model {
         if (!is_null($specified_foreign_key_name)) {
             return $specified_foreign_key_name;
         }
-        return $table_name . self::DEFAULT_FOREIGN_KEY_SUFFIX;
+        return Str::singularize($table_name) . self::DEFAULT_FOREIGN_KEY_SUFFIX;
     }
 
     /**
@@ -227,17 +227,12 @@ class Model {
         $foreign_key_name = self::_build_foreign_key_name($foreign_key_name, $base_table_name);
         $foreign_key_name = str_replace('cuveen_model_','',$foreign_key_name);
 
-        $where_value = ''; //Value of foreign_table.{$foreign_key_name} we're
-        //looking for. Where foreign_table is the actual
-        //database table in the associated model.
+        $where_value = '';
 
         if(is_null($foreign_key_name_in_current_models_table)) {
-            //Match foreign_table.{$foreign_key_name} with the value of
-            //{$this->_table}.{$this->id()}
             $where_value = $this->id();
         } else {
-            //Match foreign_table.{$foreign_key_name} with the value of
-            //{$this->_table}.{$foreign_key_name_in_current_models_table}
+
             $where_value = $this->$foreign_key_name_in_current_models_table;
         }
 
@@ -315,58 +310,41 @@ class Model {
      * @param  null|string $connection_name
      * @return DatabaseWrapper
      */
-    protected function belongsToMany($associated_class_name, $join_class_name=null, $key_to_base_table=null, $key_to_associated_table=null,  $key_in_base_table=null, $key_in_associated_table=null, $connection_name=null) {
+    protected function belongsToMany($associated_class_name, $table_relationship = null, $key_in_base_table=null, $key_in_associated_table=null, $connection_name=null) {
         $base_class_name = get_class($this);
-
-        // The class name of the join model, if not supplied, is
-        // formed by concatenating the names of the base class
-        // and the associated class, in alphabetical order.
-        if (is_null($join_class_name)) {
+        $associated_class_name = strpos($associated_class_name, 'Cuveen\Model') !== false?$associated_class_name:'Cuveen\Model\\'.$associated_class_name;
+        if(is_null($table_relationship)){
             $base_model = explode('\\', $base_class_name);
             $base_model_name = end($base_model);
             if (substr($base_model_name, 0, strlen(self::$auto_prefix_models)) == self::$auto_prefix_models) {
                 $base_model_name = substr($base_model_name, strlen(self::$auto_prefix_models), strlen($base_model_name));
             }
-            // Paris wasn't checking the name settings for the associated class.
             $associated_model = explode('\\', $associated_class_name);
             $associated_model_name = end($associated_model);
             if (substr($associated_model_name, 0, strlen(self::$auto_prefix_models)) == self::$auto_prefix_models) {
                 $associated_model_name = substr($associated_model_name, strlen(self::$auto_prefix_models), strlen($associated_model_name));
             }
-            $class_names = array($base_model_name, $associated_model_name);
-
+            $class_names = array(mb_strtolower($base_model_name), mb_strtolower($associated_model_name));
             sort($class_names, SORT_STRING);
-            $join_class_name = join("", $class_names);
+            $table_relationship = join("_", $class_names);
         }
 
-        // Get table names for each class
         $base_table_name = self::_get_table_name($base_class_name);
         $associated_table_name = self::_get_table_name(self::$auto_prefix_models . $associated_class_name);
-        $join_table_name = self::_get_table_name(self::$auto_prefix_models . $join_class_name);
+        $base_table_name = str_replace('cuveen_model_','',$base_table_name);
+        $associated_table_name = str_replace('cuveen_model_','',$associated_table_name);
+        $base_table_id_column = self::_get_id_column_name($base_class_name);
+        $associated_table_id_column = self::_get_id_column_name(self::$auto_prefix_models . $associated_class_name);
 
-        // Get ID column names
-        $base_table_id_column = (is_null($key_in_base_table)) ?
-            self::_get_id_column_name($base_class_name) :
-            $key_in_base_table;
-        $associated_table_id_column = (is_null($key_in_associated_table)) ?
-            self::_get_id_column_name(self::$auto_prefix_models . $associated_class_name) :
-            $key_in_associated_table;
-
-        // Get the column names for each side of the join table
-        $key_to_base_table = self::_build_foreign_key_name($key_to_base_table, $base_table_name);
-        $key_to_associated_table = self::_build_foreign_key_name($key_to_associated_table, $associated_table_name);
-
-        /*
-            "   SELECT {$associated_table_name}.*
-                  FROM {$associated_table_name} JOIN {$join_table_name}
-                    ON {$associated_table_name}.{$associated_table_id_column} = {$join_table_name}.{$key_to_associated_table}
-                 WHERE {$join_table_name}.{$key_to_base_table} = {$this->$base_table_id_column} ;"
-        */
-
+        $key_to_associated_table = self::_build_foreign_key_name(null, $associated_table_name);
+        $key_to_associated_table = str_replace('cuveen_model_','',$key_to_associated_table);
+        $key_to_base_table = self::_build_foreign_key_name(null, $base_table_name);
+        $key_to_base_table = str_replace('cuveen_model_','',$key_to_base_table);
         return self::factory($associated_class_name, $connection_name)
             ->select("{$associated_table_name}.*")
-            ->join($join_table_name, array("{$associated_table_name}.{$associated_table_id_column}", '=', "{$join_table_name}.{$key_to_associated_table}"))
-            ->where("{$join_table_name}.{$key_to_base_table}", $this->$base_table_id_column); ;
+            ->join($table_relationship, array("{$associated_table_name}.{$associated_table_id_column}", '=', "{$table_relationship}.{$key_to_associated_table}"))
+            ->where("{$table_relationship}.{$key_to_base_table}", $this->$base_table_id_column);
+
     }
 
     /**
@@ -386,7 +364,7 @@ class Model {
      * @return null|string
      */
     public function __get($property) {
-        return $this->orm->get($property);
+        return $this->orm->get_attr($property);
     }
 
     /**
@@ -482,6 +460,7 @@ class Model {
         $args = func_get_args();
         return call_user_func_array(array($this->orm, 'to_array'), $args);
     }
+
 
     /**
      * Save the data associated with this model instance to the database.

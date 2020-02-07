@@ -16,8 +16,6 @@ namespace Cuveen\Database;
  *
  * @method void setClassName($class_name)
  * @method static \DatabaseWrapper forTable($table_name, $connection_name = parent::DEFAULT_CONNECTION)
- * @method \Model findOne($id=null)
- * @method Array|\DatabaseResultSet findMany()
  */
 class DatabaseWrapper extends Database {
 
@@ -39,6 +37,7 @@ class DatabaseWrapper extends Database {
     public function set_class_name($class_name) {
         $this->_class_name = $class_name;
     }
+
 
     /**
      * Add a custom filter to the method chain specified on the
@@ -101,7 +100,7 @@ class DatabaseWrapper extends Database {
      * @param  null|integer $id
      * @return Model
      */
-    public function find_one($id=null) {
+    public function find($id=null) {
         return $this->_create_model_instance(parent::find_one($id));
     }
 
@@ -112,7 +111,7 @@ class DatabaseWrapper extends Database {
      *
      * @return Array
      */
-    public function find_many() {
+    public function get() {
         $results = parent::find_many();
         foreach($results as $key => $result) {
             $results[$key] = $this->_create_model_instance($result);
