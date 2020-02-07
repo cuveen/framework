@@ -60,14 +60,9 @@ class App {
             Database::configure('mysql:host='.$config->get('database.connections.mysql.host').';dbport='.$database_port.';dbname='.$config->get('database.connections.mysql.database').';charset='.$database_charset);
             Database::configure('username',$config->get('database.connections.mysql.username'));
             Database::configure('password',$config->get('database.connections.mysql.password'));
-//            $this->db = Database::new('mysql:host='.$config->get('database.connections.mysql.host').';dbport='.$database_port.';dbname='.$config->get('database.connections.mysql.database').';charset='.$database_charset,
-//                $config->get('database.connections.mysql.username'),
-//                $config->get('database.connections.mysql.password'),
-//                AutoTransact::class
-//            );
-//            if(!empty($config->get('database.connections.mysql.prefix'))){
-////                $this->db->setPrefix($config->get('database.connections.mysql.prefix'));
-//            }
+            if(!empty($config->get('database.connections.mysql.prefix'))){
+                Database::configure('prefix',$config->get('database.connections.mysql.prefix'));
+            }
         }
         $this->auth = new Auth();
         $cache_path = (!empty($this->config->get('cache.path')))?$this->config->get('cache.path'):DIRECTORY_SEPARATOR.'tmp';

@@ -143,6 +143,7 @@ class Database implements \ArrayAccess {
         'username' => null,
         'password' => null,
         'driver_options' => null,
+        'prefix' => null,
         'identifier_quote_character' => null, // if this is null, will be autodetected
         'limit_clause_style' => null, // if this is null, will be autodetected
         'logging' => false,
@@ -179,6 +180,9 @@ class Database implements \ArrayAccess {
 
     // The name of the table the current ORM instance is associated with
     protected $_table_name;
+
+    // prefix table
+    protected $_table_prefix;
 
     // Alias for the table to be used in SELECT queries
     protected $_table_alias = null;
@@ -666,7 +670,8 @@ class Database implements \ArrayAccess {
      * array of data fetched from the database)
      */
     protected function _create_instance_from_row($row) {
-        $instance = self::for_table($this->_table_name, $this->_connection_name);
+        $table_name = is_null(self::$_config[$this->_connection_name]['prefix'])?$this->_table_name:self::$_config[$this->_connection_name]['prefix'].$this->_table_name;
+        $instance = self::for_table($table_name, $this->_connection_name);
         $instance->use_id_column($this->_instance_id_column);
         $instance->hydrate($row);
         return $instance;
@@ -1666,7 +1671,7 @@ class Database implements \ArrayAccess {
     protected function _build_select_start() {
         $fragment = 'SELECT ';
         $result_columns = join(', ', $this->_result_columns);
-
+        $table_name = is_null(self::$_config[$this->_connection_name]['prefix'])?$this->_table_name:self::$_config[$this->_connection_name]['prefix'].$this->_table_name;
         if (!is_null($this->_limit) &&
             self::$_config[$this->_connection_name]['limit_clause_style'] === self::LIMIT_STYLE_TOP_N) {
             $fragment .= "TOP {$this->_limit} ";
@@ -1676,7 +1681,7 @@ class Database implements \ArrayAccess {
             $result_columns = 'DISTINCT ' . $result_columns;
         }
 
-        $fragment .= "{$result_columns} FROM " . $this->_quote_identifier($this->_table_name);
+        $fragment .= "{$result_columns} FROM " . $this->_quote_identifier($table_name);
 
         if (!is_null($this->_table_alias)) {
             $fragment .= " " . $this->_quote_identifier($this->_table_alias);
@@ -2290,6 +2295,6 @@ class Database implements \ArrayAccess {
     {
         $method = strtolower(preg_replace('/([a-z])([A-Z])/', '$1_$2', $name));
 
-        return call_user_func_array(array('ORM', $method), $arguments);
+        return call_user_func_array(array('Cuveen\Database\Database', $method), $arguments);
     }
 }

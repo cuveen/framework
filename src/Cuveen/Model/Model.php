@@ -190,10 +190,12 @@ class Model {
      * @return DatabaseWrapper
      */
     public static function factory($class_name, $connection_name = null) {
-        $class_name = self::$auto_prefix_models . $class_name;
-        $table_name = self::_get_table_name($class_name);
-        $table_name = Str::pluralize($table_name);
         $real_class_name = strpos($class_name,'Cuveen\Model') !== false?$class_name:'Cuveen\Model\\'.$class_name;
+        $class_name = self::$auto_prefix_models . $class_name;
+        $table_name = self::_get_table_name($real_class_name);
+        if(is_null(self::_get_static_property($real_class_name, '_table'))){
+            $table_name = Str::pluralize($table_name);
+        }
         if ($connection_name == null) {
             $connection_name = self::_get_static_property(
                 $class_name,
@@ -201,6 +203,7 @@ class Model {
                 DatabaseWrapper::DEFAULT_CONNECTION
             );
         }
+        $table_name = str_replace('cuveen_model_','',$table_name);
         $wrapper = DatabaseWrapper::for_table($table_name, $connection_name);
         $wrapper->set_class_name($real_class_name);
         $wrapper->use_id_column(self::_get_id_column_name($real_class_name));
