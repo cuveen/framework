@@ -474,6 +474,14 @@ class Command {
                                 $content .= "namespace Cuveen\Model;\n\n";
                                 $content .= "class ".$class_name." extends Model\n";
                                 $content .= "{\n\n";
+                                $content .= "\t/*\n";
+                                $content .= "\t*--------------------------------------------------------------\n";
+                                $content .= "\t*       YOU CAN SET MANUALLY TABLE AND PRIMARY COLUMN\n";
+                                $content .= "\t*--------------------------------------------------------------\n";
+                                $content .= "\t*".' public static $_id_column = '."'id';\n";
+                                $content .= "\t*".' public static $_table = '."'table_name';\n";
+                                $content .= "\t*\n";
+                                $content .= "\t*/\n";
                                 $content .= "}\n";
                                 $content .= "?>\n";
                                 if($this->createFile($file_name, $content)){
