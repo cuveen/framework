@@ -139,9 +139,15 @@ class Router {
         return $method;
     }
 
-    public function where()
+    public function where($param, $rule)
     {
-
+        $current = end($this->routes);
+        if(isset($current['params'][$param]) && is_array($current['params'][$param])){
+            $current['params'][$param]['rule'] = $rule;
+        }
+        array_pop($this->routes);
+        array_push($this->routes, $current);
+        return $this;
     }
 
     public function __call($method, $params)
@@ -159,7 +165,7 @@ class Router {
             if(strpos($route, ':') != false){
                 foreach(explode('/',$route) as $item){
                     if(strpos($item, ':') !== false){
-                        $is_required = strpos($item, '?') !== false?true: false;
+                        $is_required = strpos($item, '?') !== false?false: true;
                         $key = str_replace(':','',$item);
                         $key = str_replace('?','',$key);
                         $route_params[$key]['required'] = $is_required;
@@ -184,11 +190,29 @@ class Router {
 
     public function runRoute($route)
     {
+        // Route Rule
+        $count_params = count($route['params']);
+        $params = [];
+        var_dump($route);
+        if(isset($route['params']) && is_array($route['params']) && $count_params > 0){
+            foreach($route['params'] as $param=>$item){
+                if($item['required'] && empty($item['value'])){
+                    throw new \Exception($param.' is required');
+                }
+                elseif(!empty($item['value']) && !empty($item['rule']) && !preg_match("/^{$item['rule']}$/", $item['value'])){
+                    throw new \Exception($param.' is not valid');
+                }
+                if(!empty($item['value'])){
+                    $params[$param] = $item['value'];
+                }
+            }
+        }
+        var_dump($params);
         $this->runRouteMiddleware($route);
-        $this->runRouteCommand($route['callback'],(!empty($route['data'])?$route['data']:[]));
+        $this->runRouteCommand($route['callback'],$params);
     }
 
-    public function router()
+    public function listRoutes()
     {
         $this->requestedMethod = $this->getRequestMethod();
         $method = $this->requestedMethod;
@@ -211,7 +235,11 @@ class Router {
                 $route = $item['route'];
 
                 if (strstr($route, ':') !== false) {
-                    $route = str_replace($searches, $replaces, $route);
+                    //$route = str_replace($searches, $replaces, $route);
+                    foreach($item['params'] as $keyp=>$param){
+                        $replace = !empty($param['rule'])?$param['rule']:'(.*)';
+                        $route = str_replace(':'.$keyp, $replace, $route);
+                    }
                 }
 
                 $checkFull = preg_match('#^' . $route . '$#', $uri, $matched);
@@ -240,7 +268,11 @@ class Router {
                         $matched = array_map(function ($value) {
                             return trim(urldecode($value));
                         }, $matched);
-                        $item['data'] = $matched;
+                        $i=0;
+                        foreach($item['params'] as $key=>$param){
+                            $item['params'][$key]['value'] = isset($matched[$i])?$matched[$i]:'';
+                            $i++;
+                        }
                         $this->current_router = $item;
                     }
                 }

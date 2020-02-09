@@ -95,7 +95,7 @@ class App {
         /*LOAD HELPER*/
         $this->includeAll('helpers');
         /*START ROUTING*/
-        $this->router->router();
+        $this->router->listRoutes();
         if(!is_null($this->router->current_router)) {
             $this->request->route = $this->router->current_router;
             $this->request->routes = $this->router->getRoutes();
