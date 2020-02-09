@@ -43,16 +43,41 @@ function config($attr = false)
     return $config->get();
 }
 
-function router($name = '', $params = array())
+function router($name = '', $params = [])
 {
+    $path = $name;
     $request = Request::getInstance();
     if (is_array($request->routes)) {
         foreach ($request->routes as $route) {
-            if (isset($route['name']) && $route['name'] == $name && isset($route['route']) && $route['route'] != '') {
-                return $request->url($route['route']);
+            if($route['name'] == $name){
+                $uri = $route['route'];
+                if(strpos($route['route'], ':') !== false){
+                    if(count($params) > 0){
+                        foreach($params as $key=>$param){
+                            $uri = str_replace(':'.$key.'?', $param, $uri);
+                            $uri = str_replace(':'.$key, $param, $uri);
+                        }
+                    }
+                    if(count(explode(':',$uri)) > 1) {
+                        if (strpos($uri, '?') === false) {
+                            throw new Exception($route['name'] . ' required some params');
+                        }
+                        if (strpos($uri, '?') == strlen($uri) - 1) {
+                            $uri = explode(':',$uri)[0];
+                            $path = $uri;
+                        } elseif (strpos($uri, '?') < strlen($uri) - 1) {
+                            throw new Exception($route['name'] . ' required some params');
+                        }
+                    }
+                    else{
+                        $path = $uri;
+                    }
+                }
+                else $path = $route['route'];
             }
         }
-    } else return $request->url($name);
+        return $request->url($path);
+    } else return $request->url($path);
 }
 
 function redirect()

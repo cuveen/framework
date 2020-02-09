@@ -68,28 +68,16 @@ class App {
         $cache_path = (!empty($this->config->get('cache.path')))?$this->config->get('cache.path'):DIRECTORY_SEPARATOR.'tmp';
         $controllers_path = (!empty($this->config->get('app.controllers')))?$this->config->get('app.controllers'):'controllers';
         $middlewares_path = (!empty($this->config->get('middleware.path')))?$this->config->get('middleware.path'):'middlewares';
-        $router = new Router(array(
-            'paths' => array(
-                'controllers'=> $controllers_path,
-                'middlewares'=> $middlewares_path
-            ),
-            'base_folder'=> $this->base_path,
-            'cache' => $cache_path.DIRECTORY_SEPARATOR.'app.router.php'
-        ));
+        $this->includeAll($controllers_path);
+        $this->includeAll($middlewares_path);
+        $router = new Router();
+        $router->setNamespace('\Cuveen\Controller');
         if(file_exists($this->base_path.DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.'router.php')){
             include($this->base_path.DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.'router.php');
         }
-        $this->request->routes = $router->getRoutes();
         $this->router = $router;
-        // Load all model
-        if (is_dir($this->base_path . DIRECTORY_SEPARATOR.'models'.DIRECTORY_SEPARATOR) && $handle = opendir($this->base_path . DIRECTORY_SEPARATOR.'models'.DIRECTORY_SEPARATOR)) {
-            while (false !== ($entry = readdir($handle))) {
-                if ($entry != '.' && $entry != '..' && substr($entry, -4, 4) == '.php') {
-                    include($this->base_path.DIRECTORY_SEPARATOR.'models'.DIRECTORY_SEPARATOR.$entry);
-                }
-            }
-            closedir($handle);
-        }
+        // Load All Model
+        $this->includeAll('models');
     }
 
     public function run()
@@ -105,21 +93,34 @@ class App {
         $view_compiled = (!empty($this->config->get('view.compiled')))?$this->config->get('view.compiled'):$this->base_path.DIRECTORY_SEPARATOR.'compiled';
         $this->view = new View($this->base_path.DIRECTORY_SEPARATOR.$view_path,$view_compiled,View::MODE_AUTO);
         /*LOAD HELPER*/
-        if (is_dir($this->base_path . DIRECTORY_SEPARATOR.'helpers'.DIRECTORY_SEPARATOR) && $handle = opendir($this->base_path . DIRECTORY_SEPARATOR.'helpers'.DIRECTORY_SEPARATOR)) {
-            while (false !== ($entry = readdir($handle))) {
-                if ($entry != '.' && $entry != '..' && substr($entry, -4, 4) == '.php') {
-                    include($this->base_path.DIRECTORY_SEPARATOR.'helpers'.DIRECTORY_SEPARATOR.$entry);
-                }
-            }
-            closedir($handle);
-        }
+        $this->includeAll('helpers');
         /*START ROUTING*/
-        $this->router->run();
+        $this->router->router();
+        if(!is_null($this->router->current_router)) {
+            $this->request->route = $this->router->current_router;
+            $this->request->routes = $this->router->getRoutes();
+            $this->router->runRoute($this->request->route);
+        }
+        else{
+            header($_SERVER['SERVER_PROTOCOL'] . ' 404 Not Found');
+        }
     }
 
     public function exeption($message)
     {
         return new CuveenException($message);
+    }
+
+    public function includeAll($path)
+    {
+        if (is_dir($this->base_path . DIRECTORY_SEPARATOR.$path.DIRECTORY_SEPARATOR) && $handle = opendir($this->base_path . DIRECTORY_SEPARATOR.$path.DIRECTORY_SEPARATOR)) {
+            while (false !== ($entry = readdir($handle))) {
+                if ($entry != '.' && $entry != '..' && substr($entry, -4, 4) == '.php') {
+                    include($this->base_path.DIRECTORY_SEPARATOR.$path.DIRECTORY_SEPARATOR.$entry);
+                }
+            }
+            closedir($handle);
+        }
     }
 
     public function terminate()

@@ -13,6 +13,7 @@ class Request
     public $fullurl;
     protected static $_instance;
     public $routes;
+    public $route;
     public $domain;
 
     /**
@@ -36,15 +37,6 @@ class Request
     {
         $parse = parse_url($this->url);
         return $parse['host'];
-    }
-
-    public function current_router()
-    {
-        $session = Session::getInstance();
-        if($session->has('CUVEEN_FRAMEWORK_CURRENT_ROUTER') && is_array($session->get('CUVEEN_FRAMEWORK_CURRENT_ROUTER'))){
-            return $session->get('CUVEEN_FRAMEWORK_CURRENT_ROUTER');
-        }
-        return [];
     }
 
 

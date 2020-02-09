@@ -1,83 +1,31 @@
 <?php
-/**
- * @Package: Router - simple router class for php
- * @Class  : Router
- * @Author : izni burak demirtas / @izniburak <info@burakdemirtas.org>
- * @Web    : http://burakdemirtas.org
- * @URL    : https://github.com/izniburak/php-router
- * @Licence: The MIT License (MIT) - Copyright (c) - http://opensource.org/licenses/MIT
- */
-
 namespace Cuveen\Router;
 
 use Cuveen\Config\Config;
-use Cuveen\Exception\CuveenException;
-use Cuveen\Hash\Security;
 use Cuveen\Http\Request;
-use Cuveen\Session\Session;
-use Closure;
-use Exception;
-use ReflectionMethod;
 
-/**
- * Class Router
+/***
+ *  Class Router
  *
- * @method mixed any($route, $settings, $callback = null)
- * @method mixed get($route, $settings, $callback = null)
- * @method mixed post($route, $settings, $callback = null)
- * @method mixed put($route, $settings, $callback = null)
- * @method mixed delete($route, $settings, $callback = null)
- * @method mixed patch($route, $settings, $callback = null)
- * @method mixed head($route, $settings, $callback = null)
- * @method mixed options($route, $settings, $callback = null)
- * @method mixed xpost($route, $settings, $callback = null)
- * @method mixed xput($route, $settings, $callback = null)
- * @method mixed xdelete($route, $settings, $callback = null)
- * @method mixed xpatch($route, $settings, $callback = null)
- *
- * @package Buki
- */
-class Router
-{
-    /**
-     * @var string
-     */
-    protected $file_name = '';
-    /**
-     * @var string
-     */
-    protected $documentRoot = '';
+ * @method $this get($parttern, $fn)
+ * @method $this post($parttern, $fn)
+ * @method $this put($parttern, $fn)
+ * @method $this delete($parttern, $fn)
+ * @method $this options($parttern, $fn)
+ * @method $this patch($parttern, $fn)
+ * @method $this head($parttern, $fn)
+ * */
+class Router {
+    private $controller_path;
+    private $middleware_path;
+    private $namespace;
+    private $baseRoute = '';
+    private $requestedMethod;
+    private $serverBasePath;
+    public $current_router;
+    protected static $_instance;
 
-    /**
-     * @var string
-     */
-    protected $runningPath = '';
-
-    /**
-     * @var string $baseFolder Pattern definitions for parameters of Route
-     */
-    protected $baseFolder;
-
-    /**
-     * @var array $routes Routes list
-     */
-    protected $routes = [];
-
-    /**
-     * @var array $groups List of group routes
-     */
-    protected $groups = [];
-
-    /**
-     * @var array $patterns Pattern definitions for parameters of Route
-     */
     protected $patterns = [
-        '{a}' => '([^/]+)',
-        '{d}' => '(\d+)',
-        '{i}' => '(\d+)',
-        '{s}' => '(\w+)',
-        '{u}' => '([\w\-_]+)',
-        '{*}' => '(.*)',
         ':id' => '(\d+)',
         ':number' => '(\d+)',
         ':any' => '([^/]+)',
@@ -86,582 +34,223 @@ class Router
         ':slug' => '([\w\-_]+)',
     ];
 
-    /**
-     * @var array $namespaces Namespaces of Controllers and Middlewares files
-     */
-    protected $namespaces = [
-        'middlewares' => '',
-        'controllers' => '',
-    ];
 
-    /**
-     * @var array $path Paths of Controllers and Middlewares files
-     */
-    protected $paths = [
-        'controllers' => 'Controllers',
-        'middlewares' => 'Middlewares',
-    ];
+    protected $routes = [];
 
-    /**
-     * @var string $mainMethod Main method for controller
-     */
-    protected $mainMethod = 'main';
+    private $validMethods = ['ANY','GET','POST','PUT','DELETE','OPTIONS','PATCH','HEAD'];
 
-    /**
-     * @var string $mainMethod Cache file
-     */
-    protected $cacheFile = null;
-
-    /**
-     * @var bool $cacheLoaded Cache is loaded?
-     */
-    protected $cacheLoaded = false;
-
-    /**
-     * @var Closure $errorCallback Route error callback function
-     */
-    protected $errorCallback;
-
-    /**
-     * Router constructor method.
-     *
-     * @param array $params
-     *
-     * @return void
-     */
-    protected $router_id;
-
-    protected $request;
-    protected $security;
-    protected $config;
-    protected $session;
-
-    protected static $instance;
-
-    function __construct(array $params = [])
+    public function __construct()
     {
-        $this->documentRoot = realpath($_SERVER['DOCUMENT_ROOT']);
-        $this->runningPath = realpath(getcwd());
-        $this->baseFolder = $this->runningPath;
-        $this->file_name = str_replace($this->runningPath,'',realpath($_SERVER['SCRIPT_FILENAME']));
-        $this->file_name = str_replace('\\','/',$this->file_name);
-
-
-        if (isset($params['debug']) && is_bool($params['debug'])) {
-            CuveenException::$debug = $params['debug'];
-        }
-        $this->config = Config::getInstance();
-        $this->request = Request::getInstance();
-        $this->security = Security::getInstance();
-        $this->session = Session::getInstance();
-
-        $this->setPaths($params);
-        $this->loadCache();
-        self::$instance = $this;
+        self::$_instance = $this;
     }
 
     public static function getInstance()
     {
-        return self::$instance;
+        return self::$_instance;
     }
 
-    /**
-     * Add route method;
-     * Get, Post, Put, Delete, Patch, Any, Ajax...
-     *
-     * @param $method
-     * @param $params
-     *
-     * @return mixed
-     * @throws
-     */
-    public function __call($method, $params)
+    public function getBasePath()
     {
-        if ($this->cacheLoaded) {
-            return true;
+        // Check if server base path is defined, if not define it.
+        if ($this->serverBasePath === null) {
+            $this->serverBasePath = implode('/', array_slice(explode('/', $_SERVER['SCRIPT_NAME']), 0, -1)) . '/';
         }
 
-        if (is_null($params)) {
-            return false;
+        return $this->serverBasePath;
+    }
+
+
+    public function getCurrentUri()
+    {
+        // Get the current Request URI and remove rewrite base path from it (= allows one to run the router in a sub folder)
+        $uri = substr(rawurldecode($_SERVER['REQUEST_URI']), strlen($this->getBasePath()));
+
+        // Don't take query params into account on the URL
+        if (strstr($uri, '?')) {
+            $uri = substr($uri, 0, strpos($uri, '?'));
         }
 
-        if (!in_array(strtoupper($method), explode('|', Request::$validMethods))) {
-            return $this->exception($method . ' is not valid.');
-        }
-
-        $route = $params[0];
-        $callback = $params[1];
-        $settings = null;
-
-        if (count($params) > 2) {
-            $settings = $params[1];
-            $callback = $params[2];
-        }
-
-        if (strstr($route, ':') || strstr($route, '{')) {
-            $route1 = $route2 = '';
-            foreach (explode('/', $route) as $key => $value) {
-                if ($value != '') {
-                    if (!strpos($value, '?')) {
-                        $route1 .= '/' . $value;
-                    } else {
-                        if ($route2 == '') {
-                            $this->router_id = $this->random();
-                            $this->addRoute($route1, $method, $callback, $settings);
-                        }
-
-                        $route2 = $route1 . '/' . str_replace('?', '', $value);
-                        $this->router_id = $this->random();
-                        $this->addRoute($route2, $method, $callback, $settings);
-                        $route1 = $route2;
-                    }
-                }
-            }
-
-            if ($route2 == '') {
-                $this->router_id = $this->random();
-                $this->addRoute($route1, $method, $callback, $settings);
-            }
-        } else {
-            $this->router_id = $this->random();
-            $this->addRoute($route, $method, $callback, $settings);
-        }
-
-        return $this;
+        // Remove trailing slash + enforce a slash at the start
+        return '/' . trim($uri, '/');
     }
 
     public function name($name)
     {
-        foreach($this->routes as $key=>$val){
-            if(@$val['id'] == $this->router_id){
-                $this->routes[$key]['name'] = $name;
-            }
+        if(!is_string($name)){
+            return $this;
         }
+
+        $current = end($this->routes);
+        $current['name'] = $name;
+        array_pop($this->routes);
+        array_push($this->routes, $current);
         return $this;
     }
 
-    public function before($middlewares)
+    public function setNamespace($namespace)
     {
-        foreach($this->routes as $key=>$val){
-            if(@$val['id'] == $this->router_id){
-                if(is_string($middlewares)){
-                    array_push($this->routes[$key]['before'], $middlewares);
-                }
-                elseif(is_array($middlewares)){
-                    foreach($middlewares as $middleware){
-                        array_push($this->routes[$key]['before'], $middleware);
+        if(is_string($namespace)){
+            $this->namespace = $namespace;
+        }
+    }
+
+    public function middleware($middlewares)
+    {
+        if(is_null($middlewares)){
+            return $this;
+        }
+
+        if(is_string($middlewares)){
+            $middlewares = explode(',',$middlewares);
+        }
+
+        $current = end($this->routes);
+        $current['middlewares'] = $middlewares;
+        array_pop($this->routes);
+        array_push($this->routes, $current);
+        return $this;
+        
+    }
+    /**
+     * Get the request method used, taking overrides into account.
+     *
+     * @return string The Request method to handle
+     */
+    public function getRequestMethod()
+    {
+        // Take the method as found in $_SERVER
+        $method = $_SERVER['REQUEST_METHOD'];
+
+        // If it's a HEAD request override it to being GET and prevent any output, as per HTTP Specification
+        // @url http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html#sec9.4
+        if ($_SERVER['REQUEST_METHOD'] == 'HEAD') {
+            ob_start();
+            $method = 'GET';
+        }
+
+        // If it's a POST request, check for a method override header
+        elseif ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            $headers = $this->getRequestHeaders();
+            if (isset($headers['X-HTTP-Method-Override']) && in_array($headers['X-HTTP-Method-Override'], ['PUT', 'DELETE', 'PATCH'])) {
+                $method = $headers['X-HTTP-Method-Override'];
+            }
+        }
+
+        return $method;
+    }
+
+    public function where()
+    {
+
+    }
+
+    public function __call($method, $params)
+    {
+        if(\count($params) == 2){
+            if (!in_array(strtoupper($method),  $this->validMethods)) {
+                return new \Exception($method.' is not valid');
+            }
+            $pattern = $this->baseRoute.'/'.trim($params[0], '/');
+            $route = $this->baseRoute ? rtrim($pattern, '/') : $pattern;
+            $fn = $params[1];
+            $fn = is_string($fn) && strpos($fn, $this->namespace) == false?$this->namespace.'\\'.$fn:$fn;
+            $name = is_string($fn)?strtolower(preg_replace('/[^\w]/i', '.', str_replace($this->namespace, '', $fn))):null;
+            $route_params = [];
+            if(strpos($route, ':') != false){
+                foreach(explode('/',$route) as $item){
+                    if(strpos($item, ':') !== false){
+                        $is_required = strpos($item, '?') !== false?true: false;
+                        $key = str_replace(':','',$item);
+                        $key = str_replace('?','',$key);
+                        $route_params[$key]['required'] = $is_required;
                     }
                 }
             }
+            array_push($this->routes, ['method' => strtoupper($method), 'route' => $route, 'name' => $name, 'callback' => $fn,'params'=>$route_params]);
+            return $this;
         }
-        return $this;
+        else{
+            throw new \Exception('Route structure wrong');
+        }
     }
 
-    public function after($middlewares)
+    public function group($baseRoute, $fn)
     {
-        foreach($this->routes as $key=>$val){
-            if(@$val['id'] == $this->router_id){
-                if(is_string($middlewares)){
-                    array_push($this->routes[$key]['after'], $middlewares);
-                }
-                elseif(is_array($middlewares)){
-                    foreach($middlewares as $middleware){
-                        array_push($this->routes[$key]['after'], $middleware);
-                    }
-                }
-            }
-        }
-        return $this;
+        $curBaseRoute = $this->baseRoute;
+        $this->baseRoute .= substr($baseRoute,0,1) == '/'?$baseRoute:'/'.$baseRoute;
+        call_user_func($fn);
+        $this->baseRoute = $curBaseRoute;
     }
 
-    public function random($minlength = 20, $maxlength = 20, $uselower = true, $useupper = true, $usenumbers = true, $usespecial = false) {
-        $charset = '';
-        if ($uselower) {
-            $charset .= 'abcdefghijklmnopqrstuvwxyz';
-        }
-        if ($useupper) {
-            $charset .= 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        }
-        if ($usenumbers) {
-            $charset .= '123456789';
-        }
-        if ($usespecial) {
-            $charset .= '~@#$%^*()_+-={}|][';
-        }
-        if ($minlength > $maxlength) {
-            $length = mt_rand($maxlength, $minlength);
-        } else {
-            $length = mt_rand($minlength, $maxlength);
-        }
-        $key = '';
-        for ($i = 0; $i < $length; $i++) {
-            $key .= $charset[(mt_rand(0, strlen($charset) - 1))];
-        }
-        return $key;
-    }
-
-    /**
-     * Add new route method one or more http methods.
-     *
-     * @param string               $methods
-     * @param string               $route
-     * @param array|string|closure $settings
-     * @param string|closure       $callback
-     *
-     * @return bool
-     */
-    public function add($methods, $route, $settings, $callback = null)
+    public function runRoute($route)
     {
-        if ($this->cacheLoaded) {
-            return true;
-        }
-
-        if (is_null($callback)) {
-            $callback = $settings;
-            $settings = null;
-        }
-
-        if (strstr($methods, '|')) {
-            foreach (array_unique(explode('|', $methods)) as $method) {
-                if (!empty($method)) {
-                    call_user_func_array([$this, strtolower($method)], [$route, $settings, $callback]);
-                }
-            }
-        } else {
-            call_user_func_array([$this, strtolower($methods)], [$route, $settings, $callback]);
-        }
-
-        return true;
+        $this->runRouteMiddleware($route);
+        $this->runRouteCommand($route['callback'],(!empty($route['data'])?$route['data']:[]));
     }
 
-    /**
-     * Add new route rules pattern; String or Array
-     *
-     * @param string|array $pattern
-     * @param null|string  $attr
-     *
-     * @return mixed
-     * @throws
-     */
-    public function pattern($pattern, $attr = null)
+    public function router()
     {
-        if (is_array($pattern)) {
-            foreach ($pattern as $key => $value) {
-                if (in_array($key, array_keys($this->patterns))) {
-                    return $this->exception($key . ' pattern cannot be changed.');
-                }
-                $this->patterns[$key] = '(' . $value . ')';
-            }
-        } else {
-            if (in_array($pattern, array_keys($this->patterns))) {
-                return $this->exception($pattern . ' pattern cannot be changed.');
-            }
-            $this->patterns[$pattern] = '(' . $attr . ')';
-        }
-
-        return true;
-    }
-
-    /**
-     * Run Routes
-     *
-     * @return void
-     * @throws
-     */
-    public function run()
-    {
-
-        $base = str_replace('\\', '/', str_replace($this->documentRoot, '', $this->runningPath) . '/');
-        $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-        $uri = str_replace(dirname($_SERVER['PHP_SELF']), '', $uri);
-        $new_file_name = str_replace('/','',$this->file_name);
-        $uri = str_replace($this->file_name,'',$uri);
-        $uri = str_replace($new_file_name,'',$uri);
-
-        if (($base !== $uri) && (substr($uri, -1) === '/')) {
-            $uri = substr($uri, 0, (strlen($uri) - 1));
-        }
-
-        if ($uri === '') {
-            $uri = '/';
-        }
-
-        $method = Request::getRequestMethod();
+        $this->requestedMethod = $this->getRequestMethod();
+        $method = $this->requestedMethod;
         $searches = array_keys($this->patterns);
         $replaces = array_values($this->patterns);
-        $foundRoute = false;
-        $routes = array_column($this->routes, 'route');
 
-        // check if route is defined without regex
-        if (in_array($uri, $routes)) {
+        $uri = $this->getCurrentUri();
+        $routes = array_column($this->routes, 'route');
+        $foundRoute = false;
+        if(in_array($uri, $routes)){
             $currentRoute = array_filter($this->routes, function ($r) use ($method, $uri) {
                 return Request::validMethod($r['method'], $method) && $r['route'] === $uri;
             });
-            if (!empty($currentRoute)) {
-                $currentRoute = current($currentRoute);
-                $csrfConfig = $this->config->get('csrf');
-                $csrfExcept = (isset($csrfConfig['except']) && is_array($csrfConfig['except']))?$csrfConfig['except']:[];
-                if($method == 'POST' && !$this->security->Verify($this->request->get('_token')) && !in_array($currentRoute['name'], $csrfExcept) && !in_array($currentRoute['callback'], $csrfExcept)){
-                    return $this->exception('Invalid request');
-                }
-                $foundRoute = true;
-                $this->session->put('CUVEEN_FRAMEWORK_CURRENT_ROUTER',$currentRoute);
-                $this->runRouteMiddleware($currentRoute, 'before');
-                $this->runRouteCommand($currentRoute['callback']);
-                $this->runRouteMiddleware($currentRoute, 'after');
-            }
-        } else {
-            foreach ($this->routes as $key=>$data) {
-                $route = $data['route'];
-                if (strstr($route, ':') !== false || strpos($route, '{') !== false) {
+            $currentRoute = current($currentRoute);
+            $foundRoute = true;
+            $this->current_router = $currentRoute;
+        }
+        else{
+            foreach($this->routes as $item){
+                $route = $item['route'];
+
+                if (strstr($route, ':') !== false) {
                     $route = str_replace($searches, $replaces, $route);
                 }
 
-                if (preg_match('#^' . $route . '$#', $uri, $matched)) {
-                    if (Request::validMethod($data['method'], $method)) {
-                        if($method == 'POST' && !$this->security->Verify($this->request->get('_token')) && !in_array($data['name'], $csrfExcept) && !in_array($data['callback'], $csrfExcept)){
-                            return $this->exception('Invalid request');
+                $checkFull = preg_match('#^' . $route . '$#', $uri, $matched);
+                if(!$checkFull) {
+                    $route1 = '';
+                    $route2 = '';
+                    $exs = explode('/', $route);
+                    foreach ($exs as $key => $check) {
+                        if ($key == count($exs) - 1 && strpos($check, '?') !== false) {
+                            $route2 .= $route1.'/'.str_replace('?','', $check);
+                        } else {
+                            $route1 .= '/' . $check;
                         }
+                    }
+                    $route1 = str_replace('//', '/', $route1);
+                    $route2 = str_replace('//', '/', $route2);
+                    $checkFull = preg_match('#^' . $route1 . '$#', $uri, $matched);
+                    if(!$checkFull){
+                        $checkFull = preg_match('#^' . $route2 . '$#', $uri, $matched);
+                    }
+                }
+                if($checkFull){
+                    if($method == $item['method']){
                         $foundRoute = true;
-                        $this->routes[$key]['current'] = true;
-                        $this->runRouteMiddleware($data, 'before');
-
                         array_shift($matched);
                         $matched = array_map(function ($value) {
                             return trim(urldecode($value));
                         }, $matched);
-
-                        $this->runRouteCommand($data['callback'], $matched);
-                        $this->runRouteMiddleware($data, 'after');
-                        break;
+                        $item['data'] = $matched;
+                        $this->current_router = $item;
                     }
                 }
             }
         }
-
-        // If it originally was a HEAD request, clean up after ourselves by emptying the output buffer
-        if (strtoupper($_SERVER['REQUEST_METHOD']) === 'HEAD') {
-            ob_end_clean();
-        }
-
-        if ($foundRoute === false) {
-            if (!$this->errorCallback) {
-                $this->errorCallback = function () {
-                    header($_SERVER['SERVER_PROTOCOL'] . ' 404 Not Found');
-                    return $this->exception('Route not found. Looks like something went wrong. Please try again.');
-                };
-            }
-            call_user_func($this->errorCallback);
-        }
     }
 
-    /**
-     * Routes Group
-     *
-     * @param string        $name
-     * @param closure|array $settings
-     * @param null|closure  $callback
-     *
-     * @return bool
-     */
-    public function group($name, $settings = null, $callback = null)
-    {
-        if ($this->cacheLoaded) {
-            return true;
-        }
-
-        $groupName = trim($name, '/');
-        $group = [];
-        $group['route'] = '/' . $groupName;
-        $group['before'] = $group['after'] = null;
-
-        if (is_null($callback)) {
-            $callback = $settings;
-        } else {
-            $group['before'][] = (!isset($settings['before']) ? null : $settings['before']);
-            $group['after'][] = (!isset($settings['after']) ? null : $settings['after']);
-        }
-
-        $groupCount = count($this->groups);
-        if ($groupCount > 0) {
-            $list = [];
-            foreach ($this->groups as $key => $value) {
-                if (is_array($value['before'])) {
-                    foreach ($value['before'] as $k => $v) {
-                        $list['before'][] = $v;
-                    }
-                    foreach ($value['after'] as $k => $v) {
-                        $list['after'][] = $v;
-                    }
-                }
-            }
-
-            if (!is_null($group['before'])) {
-                $list['before'][] = $group['before'][0];
-            }
-
-            if (!is_null($group['after'])) {
-                $list['after'][] = $group['after'][0];
-            }
-
-            $group['before'] = $list['before'];
-            $group['after'] = $list['after'];
-        }
-
-        $group['before'] = array_values(array_unique((array)$group['before']));
-        $group['after'] = array_values(array_unique((array)$group['after']));
-
-        array_push($this->groups, $group);
-
-        if (is_object($callback)) {
-            call_user_func_array($callback, [$this]);
-        }
-
-        $this->endGroup();
-
-        return true;
-    }
-
-    /**
-     * Added route from methods of Controller file.
-     *
-     * @param string       $route
-     * @param string|array $settings
-     * @param null|string  $controller
-     *
-     * @return mixed
-     * @throws
-     */
-    public function controller($route, $settings, $controller = null)
-    {
-        if ($this->cacheLoaded) {
-            return true;
-        }
-
-        if (is_null($controller)) {
-            $controller = $settings;
-            $settings = [];
-        }
-
-        $controller = $this->resolveClass($controller);
-        $classMethods = get_class_methods($controller);
-        if ($classMethods) {
-            foreach ($classMethods as $methodName) {
-                if (!strstr($methodName, '__')) {
-                    $method = "any";
-                    foreach (explode('|', Request::$validMethods) as $m) {
-                        if (stripos($methodName, strtolower($m), 0) === 0) {
-                            $method = strtolower($m);
-                            break;
-                        }
-                    }
-
-                    $methodVar = lcfirst(preg_replace('/' . $method . '/i', '', $methodName, 1));
-                    $methodVar = strtolower(preg_replace('%([a-z]|[0-9])([A-Z])%', '\1-\2', $methodVar));
-                    $r = new ReflectionMethod($controller, $methodName);
-                    $endpoints = [];
-                    foreach ($r->getParameters() as $param) {
-                        $pattern = ':any';
-                        $typeHint = $param->hasType() ? $param->getType()->getName() : null;
-                        if (in_array($typeHint, ['int', 'bool'])) {
-                            $pattern = ':id';
-                        } elseif (in_array($typeHint, ['string', 'float'])) {
-                            $pattern = ':slug';
-                        } elseif ($typeHint === null) {
-                            $pattern = ':any';
-                        } else {
-                            continue;
-                        }
-                        $endpoints[] = $param->isOptional() ? $pattern . '?' : $pattern;
-                    }
-
-                    $value = ($methodVar === $this->mainMethod ? $route : $route . '/' . $methodVar);
-                    $this->{$method}(
-                        ($value . '/' . implode('/', $endpoints)),
-                        $settings,
-                        ($controller . '@' . $methodName)
-                    );
-                }
-            }
-            unset($r);
-        }
-
-        return true;
-    }
-
-    /**
-     * Routes error function. (Closure)
-     *
-     * @param $callback
-     *
-     * @return void
-     */
-    public function error($callback)
-    {
-        $this->errorCallback = $callback;
-    }
-
-    /**
-     * Detect Routes Middleware; before or after
-     *
-     * @param $middleware
-     * @param $type
-     *
-     * @return void
-     */
-    public function runRouteMiddleware($middleware, $type)
-    {
-        $middlewareConfig = $this->config->get('middleware');
-        $middlewareExcept = (isset($middlewareConfig['except']) && is_array($middlewareConfig['except']))?$middlewareConfig['except']:[];
-        if(!in_array($middleware['name'], $middlewareExcept) && !in_array($middleware['callback'], $middlewareExcept)) {
-            if ($type === 'before') {
-                if (!is_null($middleware['group'])) {
-                    $this->routerCommand()->beforeAfter($middleware['group'][$type]);
-                }
-                $this->routerCommand()->beforeAfter($middleware[$type]);
-            } else {
-                $this->routerCommand()->beforeAfter($middleware[$type]);
-                if (!is_null($middleware['group'])) {
-                    $this->routerCommand()->beforeAfter($middleware['group'][$type]);
-                }
-            }
-        }
-    }
-
-    /**
-     * Display all Routes.
-     *
-     * @return void
-     */
-    public function getList()
-    {
-        echo '<pre style="font-size:15px;">';
-        var_dump($this->getRoutes());
-        echo '</pre>';
-        die;
-    }
-
-    /**
-     * Get all Routes
-     *
-     * @return mixed
-     */
     public function getRoutes()
     {
         return $this->routes;
-    }
-
-    /**
-     * Throw new Exception for Router Error
-     *
-     * @param $message
-     *
-     * @return RouterException
-     * @throws
-     */
-    public function exception($message = '')
-    {
-        return new CuveenException($message);
     }
 
     /**
@@ -671,202 +260,42 @@ class Router
      */
     public function routerCommand()
     {
-        return RouterCommand::getInstance($this->baseFolder, $this->paths, $this->namespaces);
+        return new RouterCommand();
     }
 
-    /**
-     * Cache all routes
-     *
-     * @return bool
-     * @throws Exception
-     */
-    public function cache()
+    public function runRouteMiddleware($route)
     {
-        foreach ($this->getRoutes() as $key => $r) {
-            if (!is_string($r['callback'])) {
-                throw new Exception(sprintf('Routes cannot contain a Closure/Function callback while caching.'));
+        $config = Config::getInstance();
+        $middlewareConfig = $config->get('middleware');
+        $middlewareExcepts = (isset($middlewareConfig['except']) && is_array($middlewareConfig['except']))?$middlewareConfig['except']:[];
+        foreach($middlewareExcepts as $key=>$item){
+            $middlewareExcepts[$key] = strpos($item, '@') !== false?(strpos($item, $this->namespace) !== false?$item:$this->namespace.'\\'.$item):$item;
+        }
+        $callBack = is_object($route['callback'])?'Closure':(strpos($route['callback'], $this->namespace) !== false?$route['callback']:$this->namespace.'\\'.$route['callback']);
+        if(!in_array($route['name'], $middlewareExcepts) && !in_array($route['callback'], $middlewareExcepts)) {
+            $this->routerCommand()->middleware($route);
+        }
+    }
+
+    public function runRouteCommand($callback, $params = null)
+    {
+        if(!is_object($callback)) {
+            $segments = explode('@', $callback);
+            $controllerClass = $segments[0];
+            $method = $segments[1];
+            if(class_exists($controllerClass) && method_exists($controllerClass, $method)){
+                $controller = new $controllerClass();
+                return $this->runMethodWithParams([$controller, $method], $params);
             }
         }
-
-        $cacheContent = '<?php return ' . var_export($this->getRoutes(), true) . ';' . PHP_EOL;
-        if (false === file_put_contents($this->cacheFile, $cacheContent)) {
-            throw new Exception(sprintf('Routes cache file could not be written.'));
+        else{
+            return call_user_func_array($callback, $params);
         }
-
-        return true;
     }
 
-    /**
-     * Set paths and namespaces for Controllers and Middlewares.
-     *
-     * @param array $params
-     *
-     * @return void
-     */
-    protected function setPaths($params)
+    public function runMethodWithParams($function, $params = null)
     {
-        if (empty($params)) {
-            return;
-        }
-
-        if (isset($params['paths']) && $paths = $params['paths']) {
-            $this->paths['controllers'] = isset($paths['controllers'])
-                ? trim($paths['controllers'], '/')
-                : $this->paths['controllers'];
-
-            $this->paths['middlewares'] = isset($paths['middlewares'])
-                ? trim($paths['middlewares'], '/')
-                : $this->paths['middlewares'];
-        }
-
-        if (isset($params['namespaces']) && $namespaces = $params['namespaces']) {
-            $this->namespaces['controllers'] = isset($namespaces['controllers'])
-                ? trim($namespaces['controllers'], '\\') . '\\'
-                : '';
-
-            $this->namespaces['middlewares'] = isset($namespaces['middlewares'])
-                ? trim($namespaces['middlewares'], '\\') . '\\'
-                : '';
-        }
-
-        if (isset($params['base_folder'])) {
-            $this->baseFolder = rtrim($params['base_folder'], '/');
-        }
-
-        if (isset($params['main_method'])) {
-            $this->mainMethod = $params['main_method'];
-        }
-
-        $this->cacheFile = isset($params['cache']) ? $params['cache'] : realpath(__DIR__ . '/../cache.php');
+        return call_user_func_array($function, (!is_null($params) ? $params : []));
     }
 
-    /**
-     * @param $controller
-     *
-     * @return RouterException|mixed
-     */
-    protected function resolveClass($controller)
-    {
-        $controller = str_replace(['\\', '.'], '/', $controller);
-        $controller = trim(
-            preg_replace(
-                '/' . str_replace('/', '\\/', $this->paths['controllers']) . '/i',
-                '', $controller,
-                1
-            ),
-            '/'
-        );
-        $file = realpath(rtrim($this->paths['controllers'], '/') . '/' . $controller . '.php');
-
-        if (!file_exists($file)) {
-            return $this->exception($controller . ' class is not found!');
-        }
-
-        $controller = $this->namespaces['controllers'] . str_replace('/', '\\', $controller);
-        if (!class_exists($controller)) {
-            require $file;
-        }
-
-        return $controller;
-    }
-
-    /**
-     * Load Cache file
-     *
-     * @return bool
-     */
-    protected function loadCache()
-    {
-        if (file_exists($this->cacheFile)) {
-            $this->routes = require $this->cacheFile;
-            $this->cacheLoaded = true;
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * Add new Route and it's settings
-     *
-     * @param $uri
-     * @param $method
-     * @param $callback
-     * @param $settings
-     *
-     * @return void
-     */
-    private function addRoute($uri, $method, $callback, $settings)
-    {
-        $groupItem = count($this->groups) - 1;
-        $group = '';
-        if ($groupItem > -1) {
-            foreach ($this->groups as $key => $value) {
-                $group .= $value['route'];
-            }
-        }
-
-        $path = dirname($_SERVER['PHP_SELF']);
-        $path = $path === '/' || strpos($this->runningPath, $path) !== 0 ? '' : $path;
-
-        if (strstr($path, 'index.php')) {
-            $data = implode('/', explode('/', $path));
-            $path = str_replace($data, '', $path);
-        }
-
-        $route = $path . $group . '/' . trim($uri, '/');
-        $route = rtrim($route, '/');
-        if ($route === $path) {
-            $route .= '/';
-        }
-
-        $routeName = is_string($callback)
-            ? strtolower(preg_replace(
-                '/[^\w]/i', '.', str_replace($this->namespaces['controllers'], '', $callback)
-            ))
-            : null;
-        $data = [
-            'id' => $this->router_id,
-            'route' => str_replace('//', '/', $route),
-            'method' => strtoupper($method),
-            'callback' => $callback,
-            'name' => (isset($settings['name'])
-                ? $settings['name']
-                : $routeName
-            ),
-            'before' => (isset($settings['before'])
-                ? $settings['before']
-                : []
-            ),
-            'after' => (isset($settings['after'])
-                ? $settings['after']
-                : []
-            ),
-            'group' => ($groupItem === -1) ? null : $this->groups[$groupItem],
-        ];
-        array_push($this->routes, $data);
-    }
-
-    /**
-     * Run Route Command; Controller or Closure
-     *
-     * @param $command
-     * @param $params
-     *
-     * @return void
-     */
-    private function runRouteCommand($command, $params = null)
-    {
-        $this->routerCommand()->runRoute($command, $params);
-    }
-
-    /**
-     * Routes Group endpoint
-     *
-     * @return void
-     */
-    private function endGroup()
-    {
-        array_pop($this->groups);
-    }
 }

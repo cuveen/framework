@@ -104,14 +104,7 @@ class Redirect
 
     public function router($name = '/', $params = null)
     {
-        $url = $this->request->url;
-        if(is_array($this->request->routes)){
-            foreach ($this->request->routes as $route) {
-                if (isset($route['name']) && $route['name'] == $name && isset($route['route']) && $route['route'] != '') {
-                    $url =  $this->request->url($route['route']);
-                }
-            }
-        }
+        $url = router($name, $params);
         return $this->to($url);
     }
 
