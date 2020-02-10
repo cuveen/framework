@@ -338,7 +338,7 @@ class Command {
                     $i = 0;
                     $file_name = '';
                     $class_namespace = '';
-                    $class_name = '';
+                    $class_name = 'Cuveen\Controller\\';
                     foreach($exs as $ex1){
                         $i++;
                         if($i == count($exs)){
