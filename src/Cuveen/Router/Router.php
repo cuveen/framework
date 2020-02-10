@@ -414,6 +414,8 @@ class Router
         $this->requestedMethod = $this->getRequestMethod();
         // The current page URL
         $uri = $this->getCurrentUri();
+        $uri = str_replace(basename($_SERVER['SCRIPT_FILENAME']).'/','',$uri);
+        $uri = str_replace(basename($_SERVER['SCRIPT_FILENAME']),'',$uri);
 
         // Loop all routes
         foreach ($routes as $key=>$route) {
