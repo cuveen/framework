@@ -4,4 +4,4 @@
 
 
 ## Credits
-**[izniburak](https://github.com/izniburak)**, **[Jorge Castro](https://github.com/EFTEC)**, **[peppeocchi](https://github.com/peppeocchi)**
+**[Jorge Castro](https://github.com/EFTEC)**, **[peppeocchi](https://github.com/peppeocchi)**
