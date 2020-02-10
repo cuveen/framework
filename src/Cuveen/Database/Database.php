@@ -2027,6 +2027,22 @@ class Database implements \ArrayAccess {
      */
     private function _reset_idiorm_state() {
         $this->_values = array();
+        $this->_where_conditions = array();
+        $this->_limit = null;
+        $this->_join_sources = array();
+        $this->_join_tables = array();
+        $this->_pivots = array();
+        $this->_raw_query = '';
+        $this->_data = array();
+        $this->_dirty_fields = array();
+        $this->_expr_fields = array();
+        $this->_distinct = false;
+        $this->_group_by = array();
+        $this->_is_new = false;
+        $this->_is_raw_query = false;
+        $this->_raw_parameters = array();
+        $this->_offset = null;
+        $this->_order_by = array();
         $this->_result_columns = array('*');
         $this->_using_default_result_columns = true;
     }
