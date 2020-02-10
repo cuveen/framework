@@ -76,6 +76,7 @@ class App {
             include($this->base_path.DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.'router.php');
         }
         $this->router = $router;
+        $this->request->routes = $this->router->getList();
         // Load All Model
         $this->includeAll('models');
     }
@@ -95,14 +96,13 @@ class App {
         /*LOAD HELPER*/
         $this->includeAll('helpers');
         /*START ROUTING*/
-        $this->router->listRoutes();
-        if(!is_null($this->router->current_router)) {
-            $this->request->route = $this->router->current_router;
-            $this->request->routes = $this->router->getRoutes();
-            $this->router->runRoute($this->request->route);
+        $this->router->run();
+        $this->request->route = $this->router->current_router;
+        if(!is_null($this->request->route)){
+            $this->router->router($this->request->route);
         }
         else{
-            header($_SERVER['SERVER_PROTOCOL'] . ' 404 Not Found');
+            $this->exeption($this->request->full_url().' Not Found');
         }
     }
 

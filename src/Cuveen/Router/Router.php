@@ -2,6 +2,8 @@
 
 namespace Cuveen\Router;
 
+use Cuveen\Config\Config;
+
 /**
  * Class Router.
  */
@@ -10,7 +12,7 @@ class Router
     /**
      * @var array The route patterns and their handling functions
      */
-    private $afterRoutes = [];
+    private $routes = [];
 
     /**
      * @var array The before middleware route patterns and their handling functions
@@ -42,6 +44,20 @@ class Router
      */
     private $namespace = '';
 
+    public $current_router;
+    protected static $_instance;
+
+    public function __construct()
+    {
+        self::$_instance = $this;
+    }
+
+    public static function getInstance()
+    {
+        return self::$_instance;
+    }
+
+
     /**
      * Store a before middleware route and a handling function to be executed when accessed using one of the specified methods.
      *
@@ -71,13 +87,29 @@ class Router
      */
     public function match($methods, $pattern, $fn)
     {
+
         $pattern = $this->baseRoute . '/' . trim($pattern, '/');
         $pattern = $this->baseRoute ? rtrim($pattern, '/') : $pattern;
 
+        $params = [];
+        foreach(explode('/',$pattern) as $item){
+            if(strpos($item, '{') !== false && strpos($item, '}') !== false){
+                $is_required = strpos($item, '?') !== false?false:true;
+                $params[str_replace(['}','{','?'],'',$item)] = array('required'=>$is_required);
+            }
+        }
+        $routeName = is_string($fn)
+            ? strtolower(preg_replace(
+                '/[^\w]/i', '.', str_replace($this->namespace, '', $fn)
+            ))
+            : null;
         foreach (explode('|', $methods) as $method) {
-            $this->afterRoutes[$method][] = [
+            $this->routes[] = [
+                'method' => $method,
                 'pattern' => $pattern,
                 'fn' => $fn,
+                'name'=>$routeName,
+                'fields'=>$params
             ];
         }
         return $this;
@@ -172,6 +204,7 @@ class Router
         $curBaseRoute = $this->baseRoute;
 
         // Build new base route string
+        $baseRoute = substr($baseRoute,0,1) != '/'?'/'.$baseRoute:$baseRoute;
         $this->baseRoute .= $baseRoute;
 
         // Call the callable
@@ -260,13 +293,42 @@ class Router
         return $this->namespace;
     }
 
-    public function where($param, $rule)
+    public function where($field, $rule)
     {
+        $currentRoute = end($this->routes);
+        if(!isset($currentRoute['fields'])){
+            $currentRoute['fields'] = array();
+        }
+        if(!isset($currentRoute['fields'][$field])){
+            $currentRoute['fields'][$param] = array();
+        }
+        $currentRoute['fields'][$field]['rule'] = $rule;
+        array_pop($this->routes);
+        array_push($this->routes, $currentRoute);
+        return $this;
+    }
+
+    public function middleware($middlewares)
+    {
+        if(is_string($middlewares)){
+            $middlewares = explode(',',$middlewares);
+        }
+        $currentRoute = end($this->routes);
+        $currentRoute['middlewares'] = $middlewares;
+        array_pop($this->routes);
+        array_push($this->routes, $currentRoute);
         return $this;
     }
 
     public function name($name)
     {
+        if (!is_string($name)) {
+            return $this;
+        }
+        $currentRoute = end($this->routes);
+        $currentRoute['name'] = $name;
+        array_pop($this->routes);
+        array_push($this->routes, $currentRoute);
         return $this;
     }
 
@@ -275,10 +337,6 @@ class Router
 
     }
 
-    public function listRoutes()
-    {
-
-    }
 
     /**
      * Execute the router: Loop all defined before middleware's and routes, and execute the handling function if a match was found.
@@ -289,19 +347,9 @@ class Router
      */
     public function run($callback = null)
     {
-        // Define which method we need to handle
-        $this->requestedMethod = $this->getRequestMethod();
-
-        // Handle all before middlewares
-        if (isset($this->beforeRoutes[$this->requestedMethod])) {
-            $this->handle($this->beforeRoutes[$this->requestedMethod]);
-        }
 
         // Handle all routes
-        $numHandled = 0;
-        if (isset($this->afterRoutes[$this->requestedMethod])) {
-            $numHandled = $this->handle($this->afterRoutes[$this->requestedMethod], true);
-        }
+        $numHandled = $this->handle($this->routes, true);
 
         // If no route was handled, trigger the 404 (if any)
         if ($numHandled === 0) {
@@ -326,6 +374,11 @@ class Router
         return $numHandled !== 0;
     }
 
+    public function getList()
+    {
+        return $this->routes;
+    }
+
     /**
      * Set the 404 handling function.
      *
@@ -348,45 +401,96 @@ class Router
     {
         // Counter to keep track of the number of routes we've handled
         $numHandled = 0;
-
+        $this->requestedMethod = $this->getRequestMethod();
         // The current page URL
         $uri = $this->getCurrentUri();
 
         // Loop all routes
-        foreach ($routes as $route) {
+        foreach ($routes as $key=>$route) {
             // Replace all curly braces matches {} into word patterns (like Laravel)
-            $route['pattern'] = preg_replace('/\/{(.*?)}/', '/(.*?)', $route['pattern']);
-
-            // we have a match!
+            if(isset($route['fields'])){
+                $pattern = $route['pattern'];
+                $i = 0;
+                foreach($route['fields'] as $key=>$field){
+                    if(isset($field['rule']) && $field['rule'] != ''){
+                        if(isset($field['required']) && $field['required']){
+                            $route['pattern'] = preg_replace('/\/{'.$key.'}/', '/('.$field['rule'].')', $route['pattern']);
+                        }
+                        else{
+                            $route['pattern'] = str_replace('/{'.$key.'?}','(/'.$field['rule'].')?', $route['pattern']);
+                        }
+                    }
+                    $i++;
+                }
+            }
+            $route['pattern'] = preg_replace('/\/{(.*?)}/', '/([^/]+)', $route['pattern']);
             if (preg_match_all('#^' . $route['pattern'] . '$#', $uri, $matches, PREG_OFFSET_CAPTURE)) {
-                // Rework matches to only contain the matches, not the orig string
                 $matches = array_slice($matches, 1);
 
-                // Extract the matched URL parameters (and only the parameters)
                 $params = array_map(function ($match, $index) use ($matches) {
 
-                    // We have a following parameter: take the substring from the current param position until the next one's position (thank you PREG_OFFSET_CAPTURE)
                     if (isset($matches[$index + 1]) && isset($matches[$index + 1][0]) && is_array($matches[$index + 1][0])) {
                         return trim(substr($match[0][0], 0, $matches[$index + 1][0][1] - $match[0][1]), '/');
-                    } // We have no following parameters: return the whole lot
+                    }
 
                     return isset($match[0][0]) ? trim($match[0][0], '/') : null;
                 }, $matches, array_keys($matches));
-
-                // Call the handling function with the URL parameters if the desired input is callable
-                $this->invoke($route['fn'], $params);
+                $this->routes[$key]['params'] = $params;
+                $route['params'] = $params;
+                $this->current_router = $route;
 
                 ++$numHandled;
 
-                // If we need to quit, then quit
                 if ($quitAfterRun) {
                     break;
                 }
             }
         }
 
-        // Return the number of routes handled
         return $numHandled;
+    }
+
+    public function router($route)
+    {
+        $this->runMiddleware($route);
+        $this->invoke($route['fn'], $route['params']);
+    }
+
+    public function runMiddleware($route)
+    {
+        $middleware_namespace = 'Cuveen\Middleware\\';
+        $config = Config::getInstance();
+        $middlewareConfig = $config->get('middleware');
+        $middlewareGroups = isset($middlewareConfig['groups']) && is_array($middlewareConfig['groups'])?$middlewareConfig['groups']:[];
+        $middlewareKeys = array_keys($middlewareGroups);
+        if(isset($route['middlewares']) && count($route['middlewares']) > 0){
+            foreach($route['middlewares'] as $middleware){
+                $realClass = $middleware_namespace.$middleware;
+                if(in_array($middleware, $middlewareKeys) && class_exists($middlewareGroups[$middleware])){
+                    $newClass = new $middlewareGroups[$middleware]();
+                    $this->resolveMiddleware($newClass);
+                }
+                elseif(class_exists($realClass)){
+                    $newClass = new $realClass();
+                    $this->resolveMiddleware($newClass);
+                }
+            }
+        }
+    }
+
+    private function resolveMiddleware($class){
+        if(method_exists($class, 'handle')){
+            $response = call_user_func_array([$class, 'handle'], []);
+            if ($response !== true) {
+                echo $response;
+                exit;
+            }
+
+            return $response;
+        }
+        else{
+            throw new \Exception('Method handle is not found!');
+        }
     }
 
     private function invoke($fn, $params = [])

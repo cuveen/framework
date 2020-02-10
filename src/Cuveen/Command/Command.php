@@ -243,71 +243,13 @@ class Command {
                 mkdir($this->base_path.DIRECTORY_SEPARATOR.$middlewares_path, 0777);
             }
             $full_middlewares_path = realpath($this->base_path.DIRECTORY_SEPARATOR.$middlewares_path);
-            if(count($exs) == 1){
-                if($this->validClassName(trim($arg))){
-                    $file_name = $full_middlewares_path.DIRECTORY_SEPARATOR.trim($arg).'.php';
-                    $class_name = trim($arg);
-                    if(file_exists($file_name)){
-                        echo "\033[1;33mMiddleware class already exist\033[0m\n";
-                    }
-                    else {
-                        if(!empty($file_name) && !empty($class_name)){
-                            if(file_exists($file_name)){
-                                echo "\033[1;33mMiddleware class already exist\033[0m\n";
-                            }
-                            else {
-                                $content = "";
-                                $content .= "<?php\n";
-                                $content .= "class ".$class_name."\n";
-                                $content .= "{\n";
-                                $content .= "\tpublic function handle()\n";
-                                $content .= "\t{\n";
-                                $content .= "\t\t//You can check and redirect another url here\n";
-                                $content .= "\t\treturn true;\n";
-                                $content .= "\t}\n";
-                                $content .= "}\n";
-                                $content .= "?>\n";
-                                if($this->createFile($file_name, $content)){
-                                    echo "\e[0;32mMiddleware created successfully\e[0m";
-                                }
-                                else{
-                                    echo "\033[1;33mSomething went wrong\033[0m\n";
-                                }
-                            }
-                        }
-                    }
+            if($this->validClassName(trim($arg))){
+                $file_name = $full_middlewares_path.DIRECTORY_SEPARATOR.trim($arg).'.php';
+                $class_name = trim($arg);
+                if(file_exists($file_name)){
+                    echo "\033[1;33mMiddleware class already exist\033[0m\n";
                 }
-                else{
-                    echo "\033[1;33mMiddleware class is not valid\033[0m\n";
-                }
-            }
-            else{
-                $error = false;
-                foreach($exs as $ex){
-                    if(!$this->validClassName(trim($ex))){
-                        $error = true;
-                        break;
-                    }
-                }
-                if(!$error){
-                    $i = 0;
-                    $file_name = '';
-                    $class_namespace = '';
-                    $class_name = '';
-                    foreach($exs as $ex1){
-                        $i++;
-                        if($i == count($exs)){
-                            $class_name = trim($ex1);
-                            $file_name = $full_middlewares_path.DIRECTORY_SEPARATOR.trim($ex1).'.php';
-                        }
-                        else{
-                            $class_namespace .= (empty($class_namespace))?trim($ex1):'\\'.trim($ex1);
-                            $full_middlewares_path .= DIRECTORY_SEPARATOR.trim($ex1);
-                            if(!is_dir($full_middlewares_path)){
-                                mkdir($full_middlewares_path, 0777);
-                            }
-                        }
-                    }
+                else {
                     if(!empty($file_name) && !empty($class_name)){
                         if(file_exists($file_name)){
                             echo "\033[1;33mMiddleware class already exist\033[0m\n";
@@ -315,9 +257,7 @@ class Command {
                         else {
                             $content = "";
                             $content .= "<?php\n";
-                            if(!empty($class_namespace)) {
-                                $content .= "namespace ".$class_namespace.";\n\n";
-                            }
+                            $content .= "namespace Cuveen\Middleware;\n\n";
                             $content .= "class ".$class_name."\n";
                             $content .= "{\n";
                             $content .= "\tpublic function handle()\n";
@@ -336,9 +276,9 @@ class Command {
                         }
                     }
                 }
-                else{
-                    echo "\033[1;33mMiddleware class is not valid\033[0m\n";
-                }
+            }
+            else{
+                echo "\033[1;33mMiddleware class is not valid\033[0m\n";
             }
         }
         else {
@@ -367,7 +307,7 @@ class Command {
                             else {
                                 $content = "";
                                 $content .= "<?php\n";
-                                $content .= "use Cuveen\Controller\Controller;\n\n";
+                                $content .= "namespace Cuveen\Controller;\n\n";
                                 $content .= "class ".$class_name." extends Controller\n";
                                 $content .= "{\n\n";
                                 $content .= "}\n";

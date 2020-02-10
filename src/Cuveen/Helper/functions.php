@@ -50,30 +50,22 @@ function router($name = '', $params = [])
     if (is_array($request->routes)) {
         foreach ($request->routes as $route) {
             if($route['name'] == $name){
-                $uri = $route['route'];
-                if(strpos($route['route'], ':') !== false){
-                    if(count($params) > 0){
-                        foreach($params as $key=>$param){
-                            $uri = str_replace(':'.$key.'?', $param, $uri);
-                            $uri = str_replace(':'.$key, $param, $uri);
+                $path = $route['pattern'];
+                if(count($route['fields']) > 0){
+                    foreach($route['fields'] as $key=>$field){
+                        if($field['required'] && (!isset($params[$key]) || empty($params[$key]))){
+                            throw new Exception($key.' is required');
                         }
-                    }
-                    if(count(explode(':',$uri)) > 1) {
-                        if (strpos($uri, '?') === false) {
-                            throw new Exception($route['name'] . ' required some params');
+                        elseif($field['required'] == false && isset($params[$key]) && !empty($params[$key])){
+                            $path = str_replace('{'.$key.'?}',$params[$key], $path);
                         }
-                        if (strpos($uri, '?') == strlen($uri) - 1) {
-                            $uri = explode(':',$uri)[0];
-                            $path = $uri;
-                        } elseif (strpos($uri, '?') < strlen($uri) - 1) {
-                            throw new Exception($route['name'] . ' required some params');
+                        else{
+                            $path = str_replace('{'.$key.'?}','', $path);
+                            $path = str_replace('{'.$key.'}','', $path);
                         }
-                    }
-                    else{
-                        $path = $uri;
                     }
                 }
-                else $path = $route['route'];
+                return $request->url($path);
             }
         }
         return $request->url($path);
