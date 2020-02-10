@@ -3,6 +3,8 @@
 namespace Cuveen\Router;
 
 use Cuveen\Config\Config;
+use Cuveen\Hash\Security;
+use Cuveen\Http\Request;
 
 /**
  * Class Router.
@@ -47,8 +49,15 @@ class Router
     public $current_router;
     protected static $_instance;
 
+    protected $config;
+    protected $security;
+    protected $request;
+
     public function __construct()
     {
+        $this->config = Config::getInstance();
+        $this->security = Security::getInstance();
+        $this->request = Request::getInstance();
         self::$_instance = $this;
     }
 
@@ -109,7 +118,8 @@ class Router
                 'pattern' => $pattern,
                 'fn' => $fn,
                 'name'=>$routeName,
-                'fields'=>$params
+                'fields'=>$params,
+                'middlewares'=> []
             ];
         }
         return $this;
@@ -334,7 +344,7 @@ class Router
 
     public function getRoutes()
     {
-
+        return $this->routes;
     }
 
 
@@ -425,6 +435,11 @@ class Router
             }
             $route['pattern'] = preg_replace('/\/{(.*?)}/', '/([^/]+)', $route['pattern']);
             if (preg_match_all('#^' . $route['pattern'] . '$#', $uri, $matches, PREG_OFFSET_CAPTURE)) {
+                $csrfConfig = $this->config->get('csrf');
+                $csrfExcept = (isset($csrfConfig['except']) && is_array($csrfConfig['except']))?$csrfConfig['except']:[];
+                if($this->requestedMethod == 'POST' && !$this->security->Verify($this->request->get('_token')) && !in_array($route['name'], $csrfExcept) && !in_array($route['fn'], $csrfExcept)){
+                    throw new \Exception('Invalid request');
+                }
                 $matches = array_slice($matches, 1);
 
                 $params = array_map(function ($match, $index) use ($matches) {
@@ -452,15 +467,18 @@ class Router
 
     public function router($route)
     {
-        $this->runMiddleware($route);
+        $middlewareConfig = $this->config->get('middleware');
+        $middlewareExcept = (isset($middlewareConfig['except']) && is_array($middlewareConfig['except']))?$middlewareConfig['except']:[];
+        if(!in_array($route['name'], $middlewareExcept) && !in_array($route['fn'], $middlewareExcept)) {
+            $this->runMiddleware($route);
+        }
         $this->invoke($route['fn'], $route['params']);
     }
 
     public function runMiddleware($route)
     {
         $middleware_namespace = 'Cuveen\Middleware\\';
-        $config = Config::getInstance();
-        $middlewareConfig = $config->get('middleware');
+        $middlewareConfig = $this->config->get('middleware');
         $middlewareGroups = isset($middlewareConfig['groups']) && is_array($middlewareConfig['groups'])?$middlewareConfig['groups']:[];
         $middlewareKeys = array_keys($middlewareGroups);
         if(isset($route['middlewares']) && count($route['middlewares']) > 0){

@@ -561,19 +561,17 @@ class Command {
             ->addHeader('URI')
             ->addHeader('Name')
             ->addHeader('Action')
-            ->addHeader('Before')
-            ->addHeader('After')
+            ->addHeader('Middlewares')
             ->showAllBorders();
         if(count($routes) > 0){
             foreach($routes as $route){
                 $table->addRow()
                     ->addColumn('')
                     ->addColumn($this->convertType($route['method']))
-                    ->addColumn($this->convertType($route['route']))
+                    ->addColumn($this->convertType($route['pattern']))
                     ->addColumn($this->convertType($route['name']))
-                    ->addColumn($this->convertType($route['callback'],'callback'))
-                    ->addColumn($this->convertType($route['before'],'before'))
-                    ->addColumn($this->convertType($route['after'],'after'));
+                    ->addColumn($this->convertType($route['fn'],'fn'))
+                    ->addColumn($this->convertType($route['middlewares'],'middlewares'));
             }
         }
         $table->display();
@@ -612,10 +610,10 @@ class Command {
     }
 
     protected function convertType($value, $type = 'route'){
-        if($type == 'callback' && is_object($value)){
+        if($type == 'fn' && is_object($value)){
             $text_router = 'Closure';
         }
-        elseif($type == 'before'){
+        elseif($type == 'middlewares'){
             $list_middlewares = '';
             if(count($value) > 0){
                 foreach($value as $item){
