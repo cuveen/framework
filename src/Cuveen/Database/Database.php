@@ -2,6 +2,8 @@
 namespace Cuveen\Database;
 
 
+use Cuveen\Http\Request;
+
 /**
  *
  * Idiorm
@@ -191,6 +193,12 @@ class Database implements \ArrayAccess {
 
     // prefix table
     protected $_table_prefix;
+
+    protected $totalPages = 0;
+
+    protected $_segment;
+
+    protected $per_page;
 
     // Alias for the table to be used in SELECT queries
     protected $_table_alias = null;
@@ -1750,6 +1758,30 @@ class Database implements \ArrayAccess {
     }
 
     /**
+     * Build the start of the SELECT statement
+     */
+    protected function _build_select_count() {
+        $fragment = 'SELECT ';
+        $result_columns = 'COUNT(*) as count';
+        $table_name = is_null(self::$_config[$this->_connection_name]['prefix'])?$this->_table_name:self::$_config[$this->_connection_name]['prefix'].$this->_table_name;
+        if (!is_null($this->_limit) &&
+            self::$_config[$this->_connection_name]['limit_clause_style'] === self::LIMIT_STYLE_TOP_N) {
+            $fragment .= "TOP {$this->_limit} ";
+        }
+
+        if ($this->_distinct) {
+            $result_columns = 'DISTINCT ' . $result_columns;
+        }
+
+        $fragment .= "{$result_columns} FROM " . $this->_quote_identifier($table_name);
+
+        if (!is_null($this->_table_alias)) {
+            $fragment .= " " . $this->_quote_identifier($this->_table_alias);
+        }
+        return $fragment;
+    }
+
+    /**
      * Build the JOIN sources
      */
     protected function _build_join() {
@@ -2256,6 +2288,68 @@ class Database implements \ArrayAccess {
         }
 
         return join(" ", $query);
+    }
+
+    public function _build_count()
+    {
+        return $this->_join_if_not_empty(" ", array(
+            $this->_build_select_count(),
+            $this->_build_join(),
+            $this->_build_where(),
+            $this->_build_group_by(),
+            $this->_build_having()
+        ));
+    }
+
+    public function _paginate($number, $segment = 'page')
+    {
+        $query = $this->_build_count();
+        $result = self::_execute($query, $this->_values, $this->_connection_name);
+        $statement = self::get_last_statement();
+        $result = $statement->fetch(\PDO::FETCH_ASSOC);
+        $request = Request::getInstance();
+        $page = $request->get($segment)?$request->get($segment):1;
+        $this->_segment = $segment;
+        $this->totalPages = ceil(((int)$result['count'])/$number);
+        $offset = ($page-1)*$number;
+        $this->limit($offset.','.$number);
+        return $this->find_many();
+    }
+
+    public function links()
+    {
+        if($this->totalPages){
+            $request = Request::getInstance();
+            $url = $request->full_url();
+            $result = [];
+            for($i=1;$i <= $this->totalPages; $i++){
+                $page_url = $this->modify_url([$this->_segment=>$i],$url);
+                $active = $page_url == $url || $page_url == $url.'?page=1' ? true: false;
+
+                $result[] = ['link'=>$page_url, 'active'=>$active];
+            }
+            return $result;
+        }
+        else return false;
+    }
+
+    public function modify_url($mod, $url)
+    {
+        $url_array = parse_url($url);
+        if(!empty($url_array['query'])){
+            parse_str($url_array['query'], $query_array);
+            foreach ($mod as $key => $value) {
+                if(!empty($query_array[$key])){
+                    $query_array[$key] = $value;
+                }
+            }
+        }
+        else{
+            $query_array = $mod;
+        }
+        $checkUrl = $url_array['host'].'/'.$url_array['path'].'?'.http_build_query($query_array);
+        $checkUrl = str_replace('//','/',$checkUrl);
+        return $url_array['scheme'].'://'.$checkUrl;
     }
 
     /**

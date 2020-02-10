@@ -104,6 +104,15 @@ class DatabaseWrapper extends Database {
         return $this->_create_model_instance(parent::find_one($id));
     }
 
+    public function paginate($perpage = 10)
+    {
+        $results = parent::_paginate($perpage);
+        foreach($results as $key => $result) {
+            $results[$key] = $this->_create_model_instance($result);
+        }
+        return $results;
+    }
+
     /**
      * Wrap Idiorm's find_many method to return
      * an array of instances of the class associated
