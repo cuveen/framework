@@ -35,6 +35,9 @@ class App {
         $base_path = realpath(getcwd());
         $this->app_path = __DIR__;
         $this->base_path = $base_path;
+        if(!defined('APP_PATH')){
+            define('APP_PATH', $base_path);
+        }
         $dotenv = Dotenv::create([$this->base_path]);
         $dotenv->load();
         $config = new Config($this->base_path);

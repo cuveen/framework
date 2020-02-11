@@ -2,6 +2,8 @@
 namespace Cuveen\Command;
 
 use Cuveen\App;
+use Cuveen\Config\Config;
+use Cuveen\Database\Database;
 use Cuveen\Helper\Str;
 
 class Command {
@@ -12,7 +14,16 @@ class Command {
         'make:middleware',
         'make:schedule',
         'make:model',
+        'make:migration',
         'make:mail',
+        'migrate:install',
+        'migrate:fresh',
+        'migrate:refresh',
+        'migrate:status',
+        'migrate:rollback',
+        'migrate:list',
+        'migrate:reset',
+        'migrate:force',
         'cache:clear',
         'view:clear',
         'view:create',
@@ -42,8 +53,16 @@ class Command {
         echo "   \e[0;32mmake:schedule\e[0m                  Create a new schedule class\n";
         echo "   \e[0;32mmake:model\e[0m                     Create a new model class\n";
         echo "   \e[0;32mmake:mail\e[0m                      Create a new email class\n";
+        echo "   \e[0;32mmake:migration\e[0m                 Create a new migration file\n";
         echo "\033[1;33mschedule\033[0m\n";
         echo "   \e[0;32mschedule:run\e[0m                   Run the scheduled commands\n";
+        echo "\033[1;33mmigrate\033[0m\n";
+        echo "   \e[0;32mmigrate:fresh\e[0m                  Drop all tables and re-run all migrations\n";
+        echo "   \e[0;32mmigrate:install\e[0m                Create the migration repository\n";
+        echo "   \e[0;32mmigrate:refresh\e[0m                Reset and re-run all migrations\n";
+        echo "   \e[0;32mmigrate:reset\e[0m                  Rollback all database migrations\n";
+        echo "   \e[0;32mmigrate:rollback\e[0m               Rollback the last database migration\n";
+        echo "   \e[0;32mmigrate:status\e[0m                 Show the status of each migration\n";
         echo "\033[1;33mcache\033[0m\n";
         echo "   \e[0;32mcache:clear\e[0m                    Flush the application cache\n";
         echo "\033[1;33mroute\033[0m\n";
@@ -108,7 +127,9 @@ class Command {
             {
                 while (false !== ($entry = readdir($handle))) {
                     if ($entry != '.' && $entry != '..' && substr($entry, -4, 4) == '.php') {
-                        include($this->base_path . DIRECTORY_SEPARATOR.'schedules'.DIRECTORY_SEPARATOR . $entry);
+                        if(!in_array($this->base_path . DIRECTORY_SEPARATOR.'schedules'.DIRECTORY_SEPARATOR.$entry, get_included_files())) {
+                            include($this->base_path . DIRECTORY_SEPARATOR.'schedules' . DIRECTORY_SEPARATOR . $entry);
+                        }
                         $info = pathinfo($entry);
                         $class_name = $info['filename'];
                         if (class_exists($class_name) && method_exists($class_name, 'handle')) {
@@ -125,6 +146,334 @@ class Command {
         }
         else{
             echo "\033[1;33mNo command for schedule\033[0m\n";
+        }
+    }
+
+    private function includeAll($path)
+    {
+        if (is_dir($path) && $handle = opendir($path)) {
+            while (false !== ($entry = readdir($handle))) {
+                if ($entry != '.' && $entry != '..' && substr($entry, -4, 4) == '.php') {
+                    include($path.DIRECTORY_SEPARATOR.$entry);
+                }
+            }
+            closedir($handle);
+        }
+    }
+
+    public function migratefresh()
+    {
+        $config = Config::getInstance();
+        if(!empty($config->get('database.connections.mysql.database'))){
+            Database::rawExecute("SET FOREIGN_KEY_CHECKS = 0");
+            $query = Database::rawExecute("SELECT table_name FROM information_schema.tables WHERE table_schema = '".$config->get('database.connections.mysql.database')."'");
+            $statement = Database::getLastStatement();
+            $results = $statement->fetchAll(\PDO::FETCH_ASSOC);
+            if(count($results) > 0){
+                foreach($results as $result){
+                    Database::rawExecute("DROP TABLE IF EXISTS {$result['table_name']}");
+                }
+            }
+            echo "\e[0;32mDropped all tables successfully.\e[0m\n";
+            $this->migrateinstall();
+            $this->migratingall();
+        }
+    }
+
+    private function migratingall()
+    {
+        $migrations_path = realpath($this->base_path.DIRECTORY_SEPARATOR.'database'.DIRECTORY_SEPARATOR.'migrations');
+        if($migrations_path){
+            if (is_dir($migrations_path) && $handle = opendir($migrations_path)) {
+                while (false !== ($entry = readdir($handle))) {
+                    if ($entry != '.' && $entry != '..' && substr($entry, -4, 4) == '.php') {
+                        $time_start = microtime(true);
+                        if(!in_array($migrations_path.DIRECTORY_SEPARATOR.$entry, get_included_files())) {
+                            include($migrations_path . DIRECTORY_SEPARATOR . $entry);
+                        }
+                        $file_name = str_replace('.php','', $entry);
+                        echo "\033[1;33mMigrating: \033[0m".$file_name."\n";
+                        $classes = get_declared_classes();
+                        $class_name = end($classes);
+                        $class = new $class_name();
+                        call_user_func_array([$class, 'up'], []);
+                        $time_end = microtime(true);
+                        Database::raw_execute("INSERT INTO migrations (migration, batch) VALUES ('{$file_name}',1)");
+                        echo "\033[1;32mMigrated: \033[0m".$file_name." (".number_format($time_end-$time_start,3)." seconds)\n";
+                    }
+                }
+                closedir($handle);
+            }
+        }
+        else{
+            echo "\033[1;33mNothing to do\033[0m\n";
+        }
+    }
+
+    private function rollingback($batch = false)
+    {
+        $migrations_path = realpath($this->base_path.DIRECTORY_SEPARATOR.'database'.DIRECTORY_SEPARATOR.'migrations');
+        if($migrations_path){
+            $where = ($batch)?" WHERE batch='{$batch}'":'';
+            $query = Database::raw_execute("SELECT * FROM migrations".$where." ORDER BY batch ASC");
+            $statement = Database::getLastStatement();
+            $results = $statement->fetchAll(\PDO::FETCH_ASSOC);
+            if(count($results) > 0){
+                foreach($results as $result){
+                    $time_start = microtime(true);
+                    $file_name = $result['migration'];
+                    echo "\033[1;33mRolling back: \033[0m".$file_name."\n";
+                    Database::raw_execute("DELETE FROM migrations WHERE id=".$result['id']);
+                    if(file_exists($migrations_path.DIRECTORY_SEPARATOR.$file_name.'.php')) {
+                        if(!in_array($migrations_path.DIRECTORY_SEPARATOR.$file_name.'.php', get_included_files())) {
+                            include($migrations_path . DIRECTORY_SEPARATOR . $file_name.'.php');
+                        }
+                        $classes = get_declared_classes();
+                        $class_name = end($classes);
+                        $class = new $class_name();
+                        if(method_exists($class, 'down')) {
+                            call_user_func_array([$class, 'down'], []);
+                            $time_end = microtime(true);
+                            echo "\033[1;32mRolled back: \033[0m".$file_name." (".number_format($time_end-$time_start,3)." seconds)\n";
+                        }
+                        else{
+                            echo "\033[1;31mRollback function not found: \033[0m".$file_name."\n";
+                        }
+                    }
+                    else{
+                        echo "\033[1;31mMigration not found: \033[0m".$file_name."\n";
+                    }
+                }
+            }
+            else{
+                echo "\033[1;33mNothing to do\033[0m\n";
+            }
+        }
+        else{
+            echo "\033[1;31mMigrations folder does not exist\033[0m\n";
+        }
+    }
+
+    public function migraterefresh($arg)
+    {
+        $this->migrateinstall(false);
+        $this->rollingback();
+        $this->migrateforce(false);
+    }
+
+    public function migrateforce($display = true)
+    {
+        // Migration not exist file
+        $migrations_path = realpath($this->base_path.DIRECTORY_SEPARATOR.'database'.DIRECTORY_SEPARATOR.'migrations');
+        if($migrations_path){
+            $migrated = 0;
+            if (is_dir($migrations_path) && $handle = opendir($migrations_path)) {
+                $this->migrateinstall(false);
+                $query = Database::raw_execute("SELECT MAX(batch) as maxbatch FROM migrations LIMIT 1");
+                $statement = Database::getLastStatement();
+                $maxBatch = $statement->fetch(\PDO::FETCH_ASSOC);
+                $max_batch = (is_null($maxBatch['maxbatch']))?1:(int)$maxBatch['maxbatch']+1;
+                while (false !== ($entry = readdir($handle))) {
+                    if ($entry != '.' && $entry != '..' && substr($entry, -4, 4) == '.php') {
+                        $time_start = microtime(true);
+                        $file_name = str_replace('.php','', $entry);
+                        $query = Database::raw_execute("SELECT * FROM migrations WHERE migration = '{$file_name}'");
+                        $statement = Database::getLastStatement();
+                        $resultsCheck = $statement->fetchAll(\PDO::FETCH_ASSOC);
+                        if(count($resultsCheck) == 0){
+                            if(!in_array($migrations_path.DIRECTORY_SEPARATOR.$entry, get_included_files())) {
+                                include($migrations_path . DIRECTORY_SEPARATOR . $entry);
+                            }
+                            $migrated++;
+                            echo "\033[1;33mMigrating: \033[0m".$file_name."\n";
+                            $classes = get_declared_classes();
+                            $class_name = end($classes);
+                            $class = new $class_name();
+                            call_user_func_array([$class, 'up'], []);
+                            $time_end = microtime(true);
+                            Database::raw_execute("INSERT INTO migrations (migration, batch) VALUES ('{$file_name}','{$max_batch}')");
+                            echo "\033[1;32mMigrated: \033[0m".$file_name." (".number_format($time_end-$time_start,3)." seconds)\n";
+                        }
+                    }
+                }
+                closedir($handle);
+            }
+            if($migrated == 0){
+                if($display) {
+                    echo "\033[1;33mNothing to do\033[0m\n";
+                }
+            }
+        }
+        else{
+            if($display) {
+                echo "\033[1;33mNothing to do\033[0m\n";
+            }
+        }
+    }
+
+    public function migraterollback($arg)
+    {
+        // Rollback last migration
+        $step = false;
+        if(strpos($arg, 'step') !== false){
+            $step = str_replace('--step=','',$arg);
+            $step = str_replace('step=','',$step);
+            $step = str_replace('--step','',$step);
+            $step = str_replace('step','',$step);
+        }
+        else{
+            $query = Database::raw_execute("SELECT MAX(batch) as maxbatch FROM migrations LIMIT 1");
+            $statement = Database::getLastStatement();
+            $maxBatch = $statement->fetch(\PDO::FETCH_ASSOC);
+            $step = (is_null($maxBatch['maxbatch']))?1:(int)$maxBatch['maxbatch'];
+        }
+        $this->rollingback($step);
+    }
+
+    public function migratereset()
+    {
+        // Rollback all migration and truncate migrations table
+        $this->migrateinstall(false);
+        $this->rollingback();
+        Database::raw_execute("TRUNCATE `migrations`");
+    }
+
+    public function migratestatus()
+    {
+        $migrations_path = realpath($this->base_path.DIRECTORY_SEPARATOR.'database'.DIRECTORY_SEPARATOR.'migrations');
+        if($migrations_path && is_dir($migrations_path) && $handle = opendir($migrations_path)){
+            $results = [];
+            $key =0;
+            while (false !== ($entry = readdir($handle))) {
+                if ($entry != '.' && $entry != '..' && substr($entry, -4, 4) == '.php') {
+                    $file_name = str_replace('.php','', $entry);
+                    $results[$key]['migration'] = $file_name;
+                    $results[$key]['ran'] = 'No';
+                    $results[$key]['batch'] = '';
+                    $query = Database::raw_execute("SELECT * FROM migrations WHERE migration='{$file_name}' LIMIT 1");
+                    $statement = Database::getLastStatement();
+                    $migration = $statement->fetch(\PDO::FETCH_ASSOC);
+                    if($migration){
+                        $results[$key]['ran'] = 'Yes';
+                        $results[$key]['batch'] = $migration['batch'];
+                    }
+                    $key++;
+                }
+            }
+            $table = new ConsoleTable();
+            $table->addHeader('Ran?')
+                ->addHeader('Migration')
+                ->addHeader('BATCH')
+                ->showAllBorders();
+            foreach($results as $result){
+                $table->addRow()
+                    ->addColumn($result['ran'])
+                    ->addColumn($result['migration'])
+                    ->addColumn($result['batch']);
+            }
+            $table->display();
+        }
+        else{
+            echo "\033[1;33mNothing to display\033[0m\n";
+        }
+    }
+
+    public function migrateinstall($display = true)
+    {
+        $query = Database::rawExecute("SHOW TABLES LIKE 'migrations'");
+        $statement = Database::getLastStatement();
+        $result = $statement->fetch(\PDO::FETCH_ASSOC);
+        if($result){
+            if($display) {
+                echo "\033[1;33mMigration table already exist\033[0m\n";
+            }
+        }
+        else{
+            Database::rawExecute("CREATE TABLE `migrations` (`id` int(11) PRIMARY KEY AUTO_INCREMENT NOT NULL,`migration` varchar(255) NOT NULL,`batch` int(11) NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci");
+            if($display) {
+                echo "\e[0;32mMigration table created successfully.\e[0m\n";
+            }
+        }
+    }
+
+    protected function makemigration($arg)
+    {
+        if(!is_null($arg)){
+            $className = $arg;
+            $table = false;
+            $exs = explode(':', $arg);
+            if(strpos($arg, ':') !== false && count($exs) > 1){
+                $ex = explode(':', $arg);
+                $className = $exs[0];
+                $table = $exs[1];
+            }
+            $database_path = realpath($this->base_path.DIRECTORY_SEPARATOR.'database');
+            if(!$database_path){
+                mkdir($this->base_path.DIRECTORY_SEPARATOR.'database', 0777);
+            }
+            $database_path = realpath($this->base_path.DIRECTORY_SEPARATOR.'database');
+            $migrations_path = realpath($database_path.DIRECTORY_SEPARATOR.'migrations');
+            if(!$migrations_path){
+                mkdir($database_path.DIRECTORY_SEPARATOR.'migrations', 0777);
+            }
+            $migrations_path = realpath($database_path.DIRECTORY_SEPARATOR.'migrations');
+            $this->includeAll($migrations_path);
+            $className = trim($className);
+            if(class_exists('Cuveen\Migration\\'.ucfirst($className))){
+                echo "\033[1;33mMigration class `".$className."` already exist\033[0m\n";
+            }
+            elseif(!$this->validClassName($className)){
+                echo "\033[1;33mMigration class is not valid\033[0m\n";
+            }
+            else{
+                $content = "<?php\n\n";
+                $content .= "namespace Cuveen\Migration;\n\n";
+                $content .= "use Cuveen\Database\Migration;\n\n";
+                $content .= "class ".ucfirst($className)." extends Migration\n";
+                $content .= "{\n";
+                $content .= "\t/**\n";
+                $content .= "\t* Run the migrations.\n";
+                $content .= "\t*\n";
+                $content .= "\t* @return void\n";
+                $content .= "\t*/\n";
+                $content .= "\tpublic function up()\n";
+                $content .= "\t{\n";
+                if($table) {
+                    $content .= "\t\t".'$this->create(\''.$table.'\', function(){'."\n";
+                    $content .= "\t\t\t//\n";
+                    $content .= "\t\t});\n";
+                }
+                else{
+                    $content .= "\t\t//\n";
+                }
+                $content .= "\t}\n";
+                $content .= "\t/**\n";
+                $content .= "\t* Reverse the migrations.\n";
+                $content .= "\t*\n";
+                $content .= "\t* @return void\n";
+                $content .= "\t*/\n";
+                $content .= "\tpublic function down()\n";
+                $content .= "\t{\n";
+                if($table) {
+                    $content .= "\t\t".'$this->table(\''.$table.'\');'."\n";
+                }
+                else{
+                    $content .= "\t\t//\n";
+                }
+                $content .= "\t}\n";
+                $content .= "}\n";
+                $file_name = date('Y_m_d_H_i_s').'_'.Str::slug($className).'.php';
+                $file_path = $migrations_path.'/'.$file_name;
+                if($this->createFile($file_path, $content)){
+                    echo "\e[0;32mCreated Migration:\e[0m ".$file_name;
+                }
+                else{
+                    echo "\033[1;33mSomething went wrong\033[0m\n";
+                }
+            }
+        }
+        else {
+            echo "\033[1;33mNot enough arguments (missing: \"name\").\033[0m\n";
         }
     }
 
