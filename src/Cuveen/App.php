@@ -88,7 +88,7 @@ class App {
     {
         $this->security->DeleteUnnecessaryTokens();
         if(!$this->security->CountsTokens()){
-            $this->security->GenerateTokens(3, 60);
+            $this->security->GenerateTokens(5, 60);
         }
         $session_headers = session_get_cookie_params();
         Cookie::setcookie('XSRF-TOKEN', $this->security->getToken(), $session_headers['lifetime'], $session_headers['path']);
