@@ -44,7 +44,9 @@ class Migration{
             $table = $this->table;
         }
         if($table) {
-            $this->table = $table;
+            $config = Config::getInstance();
+            $prefix = $config->get('database.connections.mysql.prefix');
+            $this->table = $prefix.$table;
             $query = "DROP TABLE IF EXISTS `{$table}`";
             Database::rawExecute($query);
         }
