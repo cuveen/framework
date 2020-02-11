@@ -1,5 +1,7 @@
 <?php
 use Cuveen\Config\Config;
+use Cuveen\Helper\Arr;
+use Cuveen\Helper\Collection;
 use Cuveen\Http\Redirect;
 use Cuveen\Http\Request;
 use Cuveen\Auth\Auth;
@@ -158,4 +160,65 @@ function response($content = '', $code = 200)
 }
 function app(){
     return new Cuveen\Controller\Controller();
+}
+
+function data_set(&$target, $key, $value, $overwrite = true)
+{
+    $segments = is_array($key) ? $key : explode('.', $key);
+
+    if (($segment = array_shift($segments)) === '*') {
+        if (! Arr::accessible($target)) {
+            $target = [];
+        }
+
+        if ($segments) {
+            foreach ($target as &$inner) {
+                data_set($inner, $segments, $value, $overwrite);
+            }
+        } elseif ($overwrite) {
+            foreach ($target as &$inner) {
+                $inner = $value;
+            }
+        }
+    } elseif (Arr::accessible($target)) {
+        if ($segments) {
+            if (! Arr::exists($target, $segment)) {
+                $target[$segment] = [];
+            }
+
+            data_set($target[$segment], $segments, $value, $overwrite);
+        } elseif ($overwrite || ! Arr::exists($target, $segment)) {
+            $target[$segment] = $value;
+        }
+    } elseif (is_object($target)) {
+        if ($segments) {
+            if (! isset($target->{$segment})) {
+                $target->{$segment} = [];
+            }
+
+            data_set($target->{$segment}, $segments, $value, $overwrite);
+        } elseif ($overwrite || ! isset($target->{$segment})) {
+            $target->{$segment} = $value;
+        }
+    } else {
+        $target = [];
+
+        if ($segments) {
+            data_set($target[$segment], $segments, $value, $overwrite);
+        } elseif ($overwrite) {
+            $target[$segment] = $value;
+        }
+    }
+
+    return $target;
+}
+
+function data_fill(&$target, $key, $value)
+{
+    return data_set($target, $key, $value, false);
+}
+
+function collect($value = null)
+{
+    return new Collection($value);
 }

@@ -143,8 +143,15 @@ final class Str implements \Countable {
      * @param string $infix the other string to search for
      * @return bool whether the supplied other string is contained in this string
      */
-    public function contains($infix) {
-        return mb_strpos($this->rawString, $infix, 0, $this->charset) !== false;
+    public static function contains($haystack, $needles)
+    {
+        foreach ((array) $needles as $needle) {
+            if ($needle !== '' && mb_strpos($haystack, $needle) !== false) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -1272,5 +1279,36 @@ final class Str implements \Countable {
             return "1 $string";
         else
             return $count . " " . self::pluralize($string);
+    }
+
+    public static function is($pattern, $value)
+    {
+        $patterns = Arr::wrap($pattern);
+
+        if (empty($patterns)) {
+            return false;
+        }
+
+        foreach ($patterns as $pattern) {
+            // If the given value is an exact match we can of course return true right
+            // from the beginning. Otherwise, we will translate asterisks and do an
+            // actual pattern match against the two strings to see if they match.
+            if ($pattern == $value) {
+                return true;
+            }
+
+            $pattern = preg_quote($pattern, '#');
+
+            // Asterisks are translated into zero-or-more regular expression wildcards
+            // to make it convenient to check if the strings starts with the given
+            // pattern such as "library/*", making any string check convenient.
+            $pattern = str_replace('\*', '.*', $pattern);
+
+            if (preg_match('#^'.$pattern.'\z#u', $value) === 1) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

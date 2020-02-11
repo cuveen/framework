@@ -10,6 +10,7 @@ use BadMethodCallException;
 use Closure;
 use Countable;
 use Cuveen\Exception\CuveenException;
+use Cuveen\Validator\Errors;
 use Exception;
 use InvalidArgumentException;
 
@@ -867,6 +868,7 @@ class View
             }
         }
         $this->isRunFast = $runFast;
+        $variables['errors'] = new Errors();
         return $this->evaluatePath($this->getCompiledFile(), $variables);
     }
 

@@ -53,6 +53,7 @@ class Session {
     public function put($key = false, $val = false)
     {
         if($key && $val){
+            unset($_SESSION[$key]);
             $_SESSION[$key] = $val;
         }
     }

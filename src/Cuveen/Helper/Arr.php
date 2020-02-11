@@ -4,6 +4,20 @@ namespace Cuveen\Helper;
 class Arr
 {
 
+    public static function accessible($value)
+    {
+        return is_array($value) || $value instanceof ArrayAccess;
+    }
+
+    public static function exists($array, $key)
+    {
+        if ($array instanceof \ArrayAccess) {
+            return $array->offsetExists($key);
+        }
+
+        return array_key_exists($key, $array);
+    }
+
     /**
      * Add an element to an array using "dot" notation if it doesn't exist.
      *
@@ -114,6 +128,15 @@ class Arr
         return array_values($results);
     }
 
+    public static function wrap($value)
+    {
+        if (is_null($value)) {
+            return [];
+        }
+
+        return is_array($value) ? $value : [$value];
+    }
+
     /**
      * Return the first element in an array passing a given truth test.
      *
@@ -122,10 +145,20 @@ class Arr
      * @param  mixed  $default
      * @return mixed
      */
-    public static function first($array, callable $callback, $default = null)
+    public static function first($array, callable $callback = null, $default = null)
     {
+        if (is_null($callback)) {
+            if (empty($array)) {
+                return value($default);
+            }
+
+            foreach ($array as $item) {
+                return $item;
+            }
+        }
+
         foreach ($array as $key => $value) {
-            if (call_user_func($callback, $key, $value)) {
+            if ($callback($value, $key)) {
                 return $value;
             }
         }
@@ -458,4 +491,28 @@ class Arr
 
         return $filtered;
     }
+
+    public static function merge($results, $arrs)
+    {
+        if(count($results) > 0){
+            foreach($results as $key => $result){
+                if(isset($arrs[$key]) && !empty($arrs[$key]) && is_array($result) && count($result)){
+                    foreach($result as $item => $value){
+                        if(isset($arrs[$key][$item]) && !empty($arrs[$key][$item])){
+                            $results[$key][$item] = $arrs[$key][$item];
+                        }
+                    }
+                }
+            }
+        }
+        if(count($arrs)){
+            foreach($arrs as $key => $arr){
+                if(mb_strpos($key, '.') !== false){
+                    data_set($results, $key, $arr);
+                }
+            }
+        }
+        return $results;
+    }
+
 }

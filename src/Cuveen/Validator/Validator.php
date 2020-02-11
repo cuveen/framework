@@ -2,6 +2,10 @@
 
 namespace Cuveen\Validator;
 
+use Cuveen\Database\Database;
+use Cuveen\Helper\Arr;
+use Cuveen\Http\Request;
+
 class Validator {
 
     protected static $request;
@@ -25,6 +29,8 @@ class Validator {
     ];
     protected static $_instance;
 
+    protected $messages = [];
+
     public function __construct()
     {
         self::$_instance = $this;
@@ -45,7 +51,9 @@ class Validator {
 
     public function errors()
     {
-        return $this->errors;
+        $errors = new Errors();
+        $errors->errors = $this->errors;
+        return $errors;
     }
 
     public function run($arrs = array())
@@ -59,22 +67,22 @@ class Validator {
                 if(count($exs) > 0){
                     foreach($exs as $ex){
                         if($ex == 'file' && !$request->hasFile($key)){
-                            $this->errors[] = 'Field '.$key.' is required';
+                            $this->errors[$key]['file'] = 'Field '.$key.' is required';
                         }
                         if($ex == 'required' && (!$request->has($key) || empty($request->get($key)))){
-                            $this->errors[] = 'Field '.$key.' is required';
+                            $this->errors[$key]['required'] = 'Field '.$key.' is required';
                         }
                         if($ex == 'number' && !is_numeric($value)) {
-                            $this->errors[] = 'Field '.$key.' is numberic';
+                            $this->errors[$key]['number'] = 'Field '.$key.' is numberic';
                         }
                         if($ex == 'url' && !filter_var($value, FILTER_VALIDATE_URL)){
-                            $this->errors[] = 'Field '.$key.' must be url';
+                            $this->errors[$key]['url'] = 'Field '.$key.' must be url';
                         }
                         if($ex == 'email' && !filter_var($value, FILTER_VALIDATE_EMAIL)){
-                            $this->errors[] = 'Field '.$key.' must be email';
+                            $this->errors[$key]['email'] = 'Field '.$key.' must be email';
                         }
                         if($ex == 'alpha' && !filter_var($value, FILTER_VALIDATE_REGEXP, array('options' => array('regexp' => "/^[a-zA-Z]+$/")))){
-                            $this->errors[] = 'Field '.$key.' must be alphabets';
+                            $this->errors[$key]['alpha'] = 'Field '.$key.' must be alphabets';
                         }
                         $pos = strpos($ex, ':');
                         if($pos !== false){
@@ -83,26 +91,28 @@ class Validator {
                             $rule1 = @$dotexs[1];
                             if(!empty($rule1) && !empty($rule)) {
                                 if ($rule == 'min' && strlen($value) < (int)$rule1) {
-                                    $this->errors[] = 'Field ' . $key . ' minimum ' . $rule1 . ' characters';
+                                    $this->errors[$key]['min'] = 'Field ' . $key . ' minimum ' . $rule1 . ' characters';
                                 }
                                 if ($rule == 'max' && strlen($value) > (int)$rule1) {
-                                    $this->errors[] = 'Field ' . $key . ' maximum ' . $rule1 . ' characters';
+                                    $this->errors[$key]['max'] = 'Field ' . $key . ' maximum ' . $rule1 . ' characters';
                                 }
                                 if ($rule == 'unique') {
-                                    $db = DB::getInstance();
                                     $tbexs = explode(',',$rule1);
                                     if(count($tbexs) >= 2){
                                         $table = $tbexs[0];
                                         $column = $tbexs[1];
-                                        $db->where($column, $value);
+                                        $sql = "SELECT * FROM `{$table}` WHERE ".$column."='{$value}'";
                                         if(isset($tbexs[2]) && $tbexs[2] != ''){
                                             $except = $tbexs[2];
                                             $idCol = (isset($tbexs[3]) && $tbexs[3] != '')?$tbexs[3]:'id';
                                             $db->where($idCol, $except, 'NOT IN');
+                                            $sql .= " AND ".$idCol." NOT IN ('{$except}')";
                                         }
-                                        $db->getOne($table);
-                                        if($db->count){
-                                            $this->errors[] = $value.' already exist in database';
+                                        $query = Database::raw_execute($sql);
+                                        $statement = Database::getLastStatement();
+                                        $result = $statement->fetch(\PDO::FETCH_ASSOC);
+                                        if(count($result)){
+                                            $this->errors[$key]['unique'] = $value.' already exist in database';
                                         }
                                     }
                                 }
@@ -111,13 +121,21 @@ class Validator {
                     }
                 }
             }
+            $this->customErrors($this->messages);
         }
         return $this;
     }
 
-    public static function make($arrs = array())
+    public function customErrors($arrs = array())
+    {
+        $this->errors = Arr::merge($this->errors, $arrs);
+        return $this;
+    }
+
+    public static function make($rules = array(), $messages = array())
     {
         $validator = new self();
-        return $validator->run($arrs);
+        $validator->messages = $messages;
+        return $validator->run($rules);
     }
 }
