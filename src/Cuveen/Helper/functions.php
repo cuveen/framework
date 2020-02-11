@@ -43,6 +43,13 @@ function config($attr = false)
     return $config->get();
 }
 
+function url($path = ''){
+    $request = Request::getInstance();
+    if(strpos($path, 'https://') === false && strpos($path, 'http://') === false){
+        return $request->url($path);
+    }
+}
+
 function router($name = '', $params = [])
 {
     $path = $name;
