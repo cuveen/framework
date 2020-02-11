@@ -86,9 +86,10 @@ class App {
 
     public function run()
     {
+        $token_lifetime = (!empty($this->config->get('csrf.lifetime')))?$this->config->get('csrf.lifetime'):120;
         $this->security->DeleteUnnecessaryTokens();
         if(!$this->security->CountsTokens()){
-            $this->security->GenerateTokens(5, 60);
+            $this->security->GenerateTokens($token_lifetime, 60);
         }
         $session_headers = session_get_cookie_params();
         Cookie::setcookie('XSRF-TOKEN', $this->security->getToken(), $session_headers['lifetime'], $session_headers['path']);
