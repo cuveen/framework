@@ -436,7 +436,7 @@ class Router
                 }
             }
             $route['pattern'] = preg_replace('/\/{(.*?)}/', '/([^/]+)', $route['pattern']);
-            if (preg_match_all('#^' . $route['pattern'] . '$#', $uri, $matches, PREG_OFFSET_CAPTURE)) {
+            if (preg_match_all('#^' . $route['pattern'] . '$#', $uri, $matches, PREG_OFFSET_CAPTURE) && $this->requestedMethod == $route['method']) {
                 $csrfConfig = $this->config->get('csrf');
                 $csrfExcept = (isset($csrfConfig['except']) && is_array($csrfConfig['except']))?$csrfConfig['except']:[];
                 if($this->requestedMethod == 'POST' && !$this->security->Verify($this->request->get('_token')) && !in_array($route['name'], $csrfExcept) && !in_array($route['fn'], $csrfExcept)){
