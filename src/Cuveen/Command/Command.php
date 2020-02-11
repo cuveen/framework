@@ -532,7 +532,7 @@ class Command {
     protected function makeschedule($arg)
     {
         if(!is_null($arg)){
-            $exs = explode('/',$arg);
+            $exs = explode('\\',$arg);
             $full_schedules_path = realpath($this->base_path.DIRECTORY_SEPARATOR.'schedules');
             if(!$full_schedules_path){
                 mkdir($this->base_path.DIRECTORY_SEPARATOR.'schedules', 0777);
@@ -585,7 +585,7 @@ class Command {
     protected function makemiddleware($arg)
     {
         if(!is_null($arg)){
-            $exs = explode('/',$arg);
+            $exs = explode('\\',$arg);
             $middlewares_path = (!empty($this->app->config->get('middleware.path')))?$this->app->config->get('middleware.path'):'middlewares';
             $full_middlewares_path = realpath($this->base_path.DIRECTORY_SEPARATOR.$middlewares_path);
             if(!$full_middlewares_path){
@@ -739,7 +739,7 @@ class Command {
     protected function makemodel($arg)
     {
         if(!is_null($arg)){
-            $exs = explode('/',$arg);
+            $exs = explode('\\',$arg);
             $full_models_path = realpath($this->base_path.DIRECTORY_SEPARATOR.'models');
             if(!$full_models_path){
                 mkdir($this->base_path.DIRECTORY_SEPARATOR.'models', 0777);
