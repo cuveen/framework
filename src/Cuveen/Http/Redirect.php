@@ -62,11 +62,10 @@ class Redirect
         elseif(!is_null($value)){
             $arrs = [$key=>$value];
         }
-        else{
-            $arrs = [$key];
-        }
-        foreach($arrs as $key=>$arr){
-            $this->session->flash($key, $arr);
+        if(isset($arrs) && count($arrs) > 0) {
+            foreach ($arrs as $key => $arr) {
+                $this->session->flash($key, $arr);
+            }
         }
     }
 
