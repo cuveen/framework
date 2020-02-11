@@ -657,6 +657,7 @@ class Command {
                                 $content = "";
                                 $content .= "<?php\n";
                                 $content .= "namespace Cuveen\Controller;\n\n";
+                                $content .= "use Cuveen\Controller\Controller;\n\n";
                                 $content .= "class ".$class_name." extends Controller\n";
                                 $content .= "{\n\n";
                                 $content .= "}\n";
@@ -686,8 +687,7 @@ class Command {
                 if(!$error){
                     $i = 0;
                     $file_name = '';
-                    $class_namespace = '';
-                    $class_name = 'Cuveen\Controller\\';
+                    $class_namespace = 'Cuveen\Controller\\';
                     foreach($exs as $ex1){
                         $i++;
                         if($i == count($exs)){
@@ -695,7 +695,7 @@ class Command {
                             $file_name = $full_controllers_path.DIRECTORY_SEPARATOR.trim($ex1).'.php';
                         }
                         else{
-                            $class_namespace .= (empty($class_namespace))?trim($ex1):'\\'.trim($ex1);
+                            $class_namespace .= trim($ex1);
                             $full_controllers_path .= DIRECTORY_SEPARATOR.trim($ex1);
                             if(!is_dir($full_controllers_path)){
                                 mkdir($full_controllers_path, 0777);
