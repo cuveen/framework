@@ -638,7 +638,7 @@ class Command {
     protected function makecontroller($arg)
     {
         if(!is_null($arg)){
-            $exs = explode('/',$arg);
+            $exs = explode('\\',$arg);
             $controllers_path = (!empty($this->app->config->get('app.controllers')))?$this->app->config->get('app.controllers'):'controllers';
             $full_controllers_path = realpath($this->base_path.DIRECTORY_SEPARATOR.$controllers_path);
             if(count($exs) == 1){
