@@ -84,6 +84,7 @@ class App {
             $errorFile = $this->config->get('app.notfound');
             $router->set404(function() use ($errorFile){
                 if(file_exists($this->base_path.'/'.$errorFile)) {
+                    header("HTTP/1.0 404 Not Found");
                     include($this->base_path . '/' . $errorFile);
                 }
                 exit;
