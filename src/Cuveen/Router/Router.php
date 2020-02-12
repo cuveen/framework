@@ -419,51 +419,98 @@ class Router
 
         // Loop all routes
         foreach ($routes as $key=>$route) {
-            // Replace all curly braces matches {} into word patterns (like Laravel)
-            if(isset($route['fields'])){
-                $pattern = $route['pattern'];
-                $i = 0;
-                foreach($route['fields'] as $key=>$field){
-                    if(isset($field['rule']) && $field['rule'] != ''){
-                        if(isset($field['required']) && $field['required']){
-                            $route['pattern'] = preg_replace('/\/{'.$key.'}/', '/('.$field['rule'].')', $route['pattern']);
-                        }
-                        else{
-                            $route['pattern'] = str_replace('/{'.$key.'?}','(/'.$field['rule'].')?', $route['pattern']);
-                        }
-                    }
-                    $i++;
-                }
-            }
-            $route['pattern'] = preg_replace('/\/{(.*?)}/', '/([^/]+)', $route['pattern']);
-            if (preg_match_all('#^' . $route['pattern'] . '$#', $uri, $matches, PREG_OFFSET_CAPTURE) && $this->requestedMethod == $route['method']) {
-                $csrfConfig = $this->config->get('csrf');
-                $csrfExcept = (isset($csrfConfig['except']) && is_array($csrfConfig['except']))?$csrfConfig['except']:[];
-                if($this->requestedMethod == 'POST' && !$this->security->Verify($this->request->get('_token')) && !in_array($route['name'], $csrfExcept) && !in_array($route['fn'], $csrfExcept)){
-                    throw new \Exception('Invalid request');
-                }
-                $matches = array_slice($matches, 1);
-
-                $params = array_map(function ($match, $index) use ($matches) {
-
-                    if (isset($matches[$index + 1]) && isset($matches[$index + 1][0]) && is_array($matches[$index + 1][0])) {
-                        return trim(substr($match[0][0], 0, $matches[$index + 1][0][1] - $match[0][1]), '/');
-                    }
-
-                    return isset($match[0][0]) ? trim($match[0][0], '/') : null;
-                }, $matches, array_keys($matches));
-                $this->routes[$key]['params'] = $params;
-                $route['params'] = $params;
-                $this->current_router = $route;
-
-                ++$numHandled;
-
+            preg_match_all('/\{(\w+?)\?\}/', $route['pattern'], $matchesOptional);
+            $router_uri = $route['pattern'];
+            $optionals = isset($matchesOptional[1]) ? array_fill_keys($matchesOptional[1], null) : [];
+            if (preg_match_all('#^' . $router_uri . '$#', $uri, $matches, PREG_OFFSET_CAPTURE) && $this->requestedMethod == $route['method']) {
+                $numHandled = $this->handleRoute($route, $key, $matches, $numHandled);
                 if ($quitAfterRun) {
                     break;
                 }
             }
+            elseif(count($optionals) > 0){
+                $oldURI = $router_uri;
+                if(isset($route['fields'])){
+                    foreach($route['fields'] as $keyf=>$field){
+                        if(isset($field['rule'])){
+                            $router_uri = str_replace('{'.trim($keyf).'?}', '('.$field['rule'].')', $router_uri);
+                        }
+                    }
+                }
+                $router_full_uri = preg_replace('/\/{(.*?)}/', '/([^/]+)', $router_uri);
+                if (preg_match_all('#^' . $router_full_uri . '$#', $uri, $matches, PREG_OFFSET_CAPTURE) && $this->requestedMethod == $route['method']) {
+                    $numHandled = $this->handleRoute($route, $key, $matches, $numHandled);
+                    if ($quitAfterRun) {
+                        break;
+                    }
+                }
+                else{
+                    $listURI = array();
+                    foreach (array_reverse($optionals) as $item => $value) {
+                        $oldURI = str_replace('/{'.$item.'?}','',$oldURI);
+                        $listURI[] = $oldURI;
+                    }
+                    foreach($listURI as $url){
+                        if(isset($route['fields'])){
+                            foreach($route['fields'] as $keyf=>$field){
+                                if(isset($field['rule'])){
+                                    $url = str_replace('{'.trim($keyf).'?}', '('.$field['rule'].')', $url);
+                                }
+                            }
+                        }
+                        $router_url = preg_replace('/\/{(.*?)}/', '/([^/]+)', $url);
+                        if (preg_match_all('#^' . $router_url . '$#', $uri, $matches, PREG_OFFSET_CAPTURE) && $this->requestedMethod == $route['method']) {
+                            $numHandled = $this->handleRoute($route, $key, $matches, $numHandled);
+                            break;
+                        }
+                    }
+                    if ($quitAfterRun) {
+                        break;
+                    }
+                }
+            }
+            else{
+                if(isset($route['fields'])){
+                    foreach($route['fields'] as $keyf=>$field){
+                        if(isset($field['rule']) && $field['rule'] != ''){
+                            $router_uri = preg_replace('/\/{'.$keyf.'}/', '/('.$field['rule'].')', $router_uri);
+                        }
+                    }
+                }
+                $router_uri = preg_replace('/\/{(.*?)}/', '/([^/]+)', $router_uri);
+                if (preg_match_all('#^' . $router_uri . '$#', $uri, $matches, PREG_OFFSET_CAPTURE) && $this->requestedMethod == $route['method']) {
+                    $numHandled = $this->handleRoute($route, $key, $matches, $numHandled);
+                    if ($quitAfterRun) {
+                        break;
+                    }
+                }
+            }
         }
 
+        return $numHandled;
+    }
+
+    private function handleRoute($route, $key, $matches, $numHandled){
+        $csrfConfig = $this->config->get('csrf');
+        $csrfExcept = (isset($csrfConfig['except']) && is_array($csrfConfig['except'])) ? $csrfConfig['except'] : [];
+        if ($this->requestedMethod == 'POST' && !$this->security->Verify($this->request->get('_token')) && !in_array($route['name'], $csrfExcept) && !in_array($route['fn'], $csrfExcept)) {
+            throw new \Exception('Invalid request');
+        }
+        $matches = array_slice($matches, 1);
+
+        $params = array_map(function ($match, $index) use ($matches) {
+
+            if (isset($matches[$index + 1]) && isset($matches[$index + 1][0]) && is_array($matches[$index + 1][0])) {
+                return trim(substr($match[0][0], 0, $matches[$index + 1][0][1] - $match[0][1]), '/');
+            }
+
+            return isset($match[0][0]) ? trim($match[0][0], '/') : null;
+        }, $matches, array_keys($matches));
+        $this->routes[$key]['params'] = $params;
+        $route['params'] = $params;
+        $this->current_router = $route;
+
+        ++$numHandled;
         return $numHandled;
     }
 
