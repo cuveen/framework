@@ -80,6 +80,16 @@ class App {
         }
         $this->router = $router;
         $this->request->routes = $this->router->getList();
+        if(!empty($this->config->get('app.notfound'))){
+            $errorFile = $this->config->get('app.notfound');
+            $router->set404(function() use ($errorFile){
+                if(file_exists($this->base_path.'/'.$errorFile)) {
+                    include($this->base_path . '/' . $errorFile);
+                }
+                exit;
+            });
+        }
+
         // Load All Model
         $this->includeAll('models');
     }
