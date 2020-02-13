@@ -689,16 +689,19 @@ class Database implements \ArrayAccess {
     public function set_timestamp($timestamp)
     {
         $this->_timestamp = $timestamp;
+        return $this;
     }
 
     public function set_created_at($column)
     {
         $this->_created_at = $column;
+        return $this;
     }
 
     public function set_updated_at($column)
     {
         $this->_updated_at = $column;
+        return $this;
     }
 
     /**
@@ -2183,7 +2186,6 @@ class Database implements \ArrayAccess {
      */
     public function save() {
         $query = array();
-
         if($this->_timestamp){
             if (!isset($this->_dirty_fields[$this->_updated_at]) || empty($this->_dirty_fields[$this->_updated_at])) {
                 $this->_dirty_fields[$this->_updated_at] = date('Y-m-d H:i:s');

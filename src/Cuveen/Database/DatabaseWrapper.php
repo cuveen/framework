@@ -27,6 +27,12 @@ class DatabaseWrapper extends Database {
      */
     protected $_class_name;
 
+    protected $_timestamp;
+
+    protected $_created_at;
+
+    protected $_updated_at;
+
     /**
      * Set the name of the class which the wrapped
      * methods should return instances of.
@@ -36,6 +42,15 @@ class DatabaseWrapper extends Database {
      */
     public function set_class_name($class_name) {
         $this->_class_name = $class_name;
+    }
+    public function set_timestamp($timestamp) {
+        $this->_timestamp = $timestamp;
+    }
+    public function set_created_at($created_at) {
+        $this->_created_at = $created_at;
+    }
+    public function set_updated_at($updated_at) {
+        $this->_updated_at = $updated_at;
     }
 
 
@@ -87,6 +102,9 @@ class DatabaseWrapper extends Database {
         if ($orm === false) {
             return false;
         }
+        $orm->_timestamp = $this->_timestamp;
+        $orm->_created_at = $this->_created_at;
+        $orm->_updated_at = $this->_updated_at;
         $model = new $this->_class_name();
         $model->set_orm($orm);
         return $model;
