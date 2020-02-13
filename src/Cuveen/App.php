@@ -86,8 +86,8 @@ class App {
                 if(file_exists($this->base_path.'/'.$errorFile)) {
                     header("HTTP/1.0 404 Not Found");
                     include($this->base_path . '/' . $errorFile);
+                    exit;
                 }
-                exit;
             });
         }
 
