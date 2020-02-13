@@ -28,7 +28,8 @@ class Session {
         ini_set('session.serialize_handler', 'php_serialize');
         ini_set('session.use_only_cookies', 1);
         $cookieParams = session_get_cookie_params();
-        $lifetime = (!empty($this->config->get('session.lifetime')))?$this->config->get('session.lifetime'):120;
+        $lifetime = (!empty($this->config->get('session.lifetime')))?(int)$this->config->get('session.lifetime'):120;
+        $lifetime = $lifetime*60;
         $path = (!empty($this->config->get('session.files')))?$this->config->get('session.files'):$this->config->get('base_path');
         $request = Request::getInstance();
         session_set_cookie_params(
