@@ -13,7 +13,7 @@ class JWT
     public function handle()
     {
         $token = request()->getAuthorization();
-        $secret = 'sec!ReT423*&';
+        $secret = !empty(config('jwt.secret'))?config('jwt.secret'):'sec!ReT423*&';
         $jwt = new \Cuveen\Jwt\Jwt($token, $secret);
         $parse = new Parse($jwt, new Validate(), new Encode());
         try{
