@@ -22,6 +22,9 @@ class ValidateException extends Exception
      */
     public function __construct(string $message, int $code = 0, Throwable $previous = null)
     {
-        parent::__construct($message, $code, $previous);
+        //parent::__construct($message, $code, $previous);
+        header('Content-Type: application/json');
+        echo json_encode(['status'=>'error', 'msg' => $message]);
+        die();
     }
 }

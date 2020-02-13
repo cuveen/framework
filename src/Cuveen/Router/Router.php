@@ -528,11 +528,6 @@ class Router
     }
 
     private function handleRoute($route, $key, $matches, $numHandled){
-        $csrfConfig = $this->config->get('csrf');
-        $csrfExcept = (isset($csrfConfig['except']) && is_array($csrfConfig['except'])) ? $csrfConfig['except'] : [];
-        if ($this->requestedMethod == 'POST' && !$this->security->Verify($this->request->get('_token')) && !in_array($route['name'], $csrfExcept) && !in_array($route['fn'], $csrfExcept)) {
-            throw new \Exception('Invalid request');
-        }
         $matches = array_slice($matches, 1);
 
         $params = array_map(function ($match, $index) use ($matches) {
@@ -553,10 +548,16 @@ class Router
 
     public function router($route)
     {
+        $this->requestedMethod = $this->getRequestMethod();
         $middlewareConfig = $this->config->get('middleware');
         $middlewareExcept = (isset($middlewareConfig['except']) && is_array($middlewareConfig['except']))?$middlewareConfig['except']:[];
         if(!in_array($route['name'], $middlewareExcept) && !in_array($route['fn'], $middlewareExcept)) {
             $this->runMiddleware($route);
+        }
+        $csrfConfig = $this->config->get('csrf');
+        $csrfExcept = (isset($csrfConfig['except']) && is_array($csrfConfig['except'])) ? $csrfConfig['except'] : [];
+        if (!in_array('jwt', $route['middlewares']) && $this->requestedMethod == 'POST' && !$this->security->Verify($this->request->get('_token')) && !in_array($route['name'], $csrfExcept) && !in_array($route['fn'], $csrfExcept)) {
+            throw new \Exception('Invalid request');
         }
         $this->invoke($route['fn'], $route['params']);
     }

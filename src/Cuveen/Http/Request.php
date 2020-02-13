@@ -228,6 +228,20 @@ class Request
         return $device;
     }
 
+    public function getAuthorization()
+    {
+        if (!isset($_SERVER['HTTP_AUTHORIZATION'])) {
+            if (function_exists('apache_request_headers')) {
+                $requestHeaders = apache_request_headers();
+                $requestHeaders = array_combine(array_map('ucwords', array_keys($requestHeaders)), array_values($requestHeaders));
+                if (isset($requestHeaders['Authorization'])) {
+                    $_SERVER['HTTP_AUTHORIZATION'] = trim($requestHeaders['Authorization']);
+                }
+            }
+        }
+        return !empty($_SERVER['HTTP_AUTHORIZATION'])?str_replace('Bearer ','',$_SERVER['HTTP_AUTHORIZATION']):false;
+    }
+
     public function referer()
     {
         return isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER']: $this->url();
