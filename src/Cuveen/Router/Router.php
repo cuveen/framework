@@ -586,7 +586,7 @@ class Router
         if(method_exists($class, 'handle')){
             $response = call_user_func_array([$class, 'handle'], []);
             if ($response !== true) {
-                echo $response;
+                return $response;
                 exit;
             }
 
