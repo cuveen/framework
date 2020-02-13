@@ -68,6 +68,9 @@ function router($name = '', $params = [])
                         elseif($field['required'] == false && isset($params[$key]) && !empty($params[$key])){
                             $path = str_replace('{'.$key.'?}',$params[$key], $path);
                         }
+                        elseif($field['required'] && isset($params[$key]) && !empty($params[$key])){
+                            $path = str_replace('{'.$key.'}',$params[$key], $path);
+                        }
                         else{
                             $path = str_replace('{'.$key.'?}','', $path);
                             $path = str_replace('{'.$key.'}','', $path);
