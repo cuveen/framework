@@ -47,11 +47,18 @@ class Router
     private $namespace = '';
 
     public $current_router;
+
     protected static $_instance;
 
     protected $config;
+
     protected $security;
+
     protected $request;
+
+    protected $defaultMiddleware;
+
+    protected $defaultName;
 
     public function __construct()
     {
@@ -112,6 +119,15 @@ class Router
                 '/[^\w]/i', '.', str_replace($this->namespace, '', $fn)
             ))
             : null;
+
+        $routeName = (!is_null($this->defaultName))?$this->defaultName.'.'.$routeName:$routeName;
+
+        $middlewares = [];
+
+        if(!is_null($this->defaultMiddleware)){
+            $middlewares = (is_string($this->defaultMiddleware))?[$this->defaultMiddleware]:(is_array($this->defaultMiddleware)?$this->defaultMiddleware:[]);
+        }
+
         foreach (explode('|', $methods) as $method) {
             $this->routes[] = [
                 'method' => $method,
@@ -119,7 +135,7 @@ class Router
                 'fn' => $fn,
                 'name'=>$routeName,
                 'fields'=>$params,
-                'middlewares'=> []
+                'middlewares'=> $middlewares
             ];
         }
         return $this;
@@ -208,20 +224,36 @@ class Router
      * @param string   $baseRoute The route sub pattern to mount the callbacks on
      * @param callable $fn        The callback method
      */
-    public function group($baseRoute, $fn)
+    public function group($baseRoute, $settings, $callback = null)
     {
         // Track current base route
         $curBaseRoute = $this->baseRoute;
+        $params = [];
+        if(is_callable($settings)){
+            $callback = $settings;
+        }
+        else{
+            $params = $settings;
+        }
+
+        if(isset($params['middleware']) && !empty($params['middleware'])){
+            $this->defaultMiddleware = $params['middleware'];
+        }
 
         // Build new base route string
         $baseRoute = substr($baseRoute,0,1) != '/'?'/'.$baseRoute:$baseRoute;
+        $this->defaultName = substr($baseRoute,0,1) == '/' ?substr($baseRoute,1):$baseRoute;
+        $this->defaultName = strtolower(str_replace('/','.',$this->defaultName));
         $this->baseRoute .= $baseRoute;
 
         // Call the callable
-        call_user_func($fn);
+        call_user_func($callback, $params);
 
         // Restore original base route
+        $this->defaultMiddleware = null;
+        $this->defaultName = null;
         $this->baseRoute = $curBaseRoute;
+        return $this;
     }
 
     /**
@@ -324,7 +356,15 @@ class Router
             $middlewares = explode(',',$middlewares);
         }
         $currentRoute = end($this->routes);
-        $currentRoute['middlewares'] = $middlewares;
+
+        $oldMiddlewares = $currentRoute['middlewares'];
+        foreach($middlewares as $middleware){
+            if(!in_array($middleware, $oldMiddlewares)){
+                $oldMiddlewares[] = $middleware;
+            }
+        }
+
+        $currentRoute['middlewares'] = $oldMiddlewares;
         array_pop($this->routes);
         array_push($this->routes, $currentRoute);
         return $this;
@@ -463,9 +503,6 @@ class Router
                             $numHandled = $this->handleRoute($route, $key, $matches, $numHandled);
                             break;
                         }
-                    }
-                    if ($quitAfterRun) {
-                        break;
                     }
                 }
             }
