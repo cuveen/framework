@@ -62,13 +62,13 @@ function router($name = '', $params = [])
                 $path = $route['pattern'];
                 if(count($route['fields']) > 0){
                     foreach($route['fields'] as $key=>$field){
-                        if($field['required'] && (!isset($params[$key]) || empty($params[$key]))){
+                        if(isset($field['required']) && $field['required'] && (!isset($params[$key]) || empty($params[$key]))){
                             throw new Exception($key.' is required');
                         }
-                        elseif($field['required'] == false && isset($params[$key]) && !empty($params[$key])){
+                        elseif(isset($field['required']) && $field['required'] == false && isset($params[$key]) && !empty($params[$key])){
                             $path = str_replace('{'.$key.'?}',$params[$key], $path);
                         }
-                        elseif($field['required'] && isset($params[$key]) && !empty($params[$key])){
+                        elseif(isset($field['required']) && $field['required'] && isset($params[$key]) && !empty($params[$key])){
                             $path = str_replace('{'.$key.'}',$params[$key], $path);
                         }
                         else{

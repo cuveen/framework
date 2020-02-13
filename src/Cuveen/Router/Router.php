@@ -342,7 +342,7 @@ class Router
             $currentRoute['fields'] = array();
         }
         if(!isset($currentRoute['fields'][$field])){
-            $currentRoute['fields'][$param] = array();
+            $currentRoute['fields'][$field] = array();
         }
         $currentRoute['fields'][$field]['rule'] = $rule;
         array_pop($this->routes);
