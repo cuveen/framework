@@ -317,10 +317,13 @@ class Session
      */
     protected function generateFingerprint()
     {
-        return hash(
-            'sha256',
-            $_SERVER['HTTP_USER_AGENT'] . $_SERVER['REMOTE_ADDR'] . session_id()
-        );
+        if(!is_cli()) {
+            return hash(
+                'sha256',
+                $_SERVER['HTTP_USER_AGENT'] . $_SERVER['REMOTE_ADDR'] . session_id()
+            );
+        }
+        return;
     }
 
     /**
