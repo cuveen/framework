@@ -97,14 +97,7 @@ class App {
 
     public function run()
     {
-        $token_lifetime = (!empty($this->config->get('csrf.lifetime')))?$this->config->get('csrf.lifetime'):120;
-        $this->security->DeleteUnnecessaryTokens();
-        if(!$this->security->CountsTokens()){
-            $this->security->GenerateTokens($token_lifetime, 60);
-        }
-        $session_headers = session_get_cookie_params();
-        Cookie::setcookie('XSRF-TOKEN', $this->security->getToken(), time()+$session_headers['lifetime'], $session_headers['path']);
-        Cookie::setcookie('cuveen_session', $this->security->getToken(), time()+$session_headers['lifetime'], $session_headers['path'], $session_headers['secure'], $session_headers['httponly']);        $view_path = (!empty($this->config->get('view.path')))?$this->config->get('view.path'):'views';
+        $view_path = (!empty($this->config->get('view.compiled')))?$this->config->get('view.path'):'views';
         $view_compiled = (!empty($this->config->get('view.compiled')))?$this->config->get('view.compiled'):$this->base_path.DIRECTORY_SEPARATOR.'compiled';
         $this->view = new View($this->base_path.DIRECTORY_SEPARATOR.$view_path,$view_compiled,View::MODE_AUTO);
         /*LOAD HELPER*/

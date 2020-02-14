@@ -138,13 +138,13 @@ function auth()
 function csrf_field()
 {
     $security = Security::getInstance();
-    return '<input type="hidden" name="_token" value="' . $security->getToken() . '">';
+    return '<input type="hidden" name="'.$security->get_csrf_token_name().'" value="' . $security->get_csrf_hash() . '">';
 }
 
 function csrf_token()
 {
     $security = Security::getInstance();
-    return $security->getToken();
+    return $security->get_csrf_hash();
 }
 
 function validate($arrs = array())

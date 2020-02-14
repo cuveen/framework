@@ -99,7 +99,7 @@ class Auth
                 }
             }
             $user = $load->$user_model->find();
-            if($load->$user_model->count() && password_verify($credentials['password'], $user->password)){
+            if($user && $load->$user_model->count() && password_verify($credentials['password'], $user->password)){
                 $session->put('__CUVEEN_USER_LOGGED_IN', true);
                 $session->put('__CUVEEN_USER_LOGGED_IN_ID', $user->$user_primaryKey);
                 return true;

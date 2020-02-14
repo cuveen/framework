@@ -556,7 +556,7 @@ class Router
         }
         $csrfConfig = $this->config->get('csrf');
         $csrfExcept = (isset($csrfConfig['except']) && is_array($csrfConfig['except'])) ? $csrfConfig['except'] : [];
-        if (!in_array('jwt', $route['middlewares']) && $this->requestedMethod == 'POST' && !$this->security->Verify($this->request->get('_token')) && !in_array($route['name'], $csrfExcept) && !in_array($route['fn'], $csrfExcept)) {
+        if (!in_array('jwt', $route['middlewares']) && $this->requestedMethod == 'POST' && !$this->security->csrf_verify() && !in_array($route['name'], $csrfExcept) && !in_array($route['fn'], $csrfExcept)) {
             throw new \Exception('Invalid request');
         }
         $this->invoke($route['fn'], $route['params']);
