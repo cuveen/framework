@@ -63,41 +63,118 @@ class Validator {
             foreach($arrs as $key=>$rules){
                 $value = $request->get($key);
                 // loop rules
-                $exs = explode('|', $rules);
-                if(count($exs) > 0){
-                    foreach($exs as $ex){
-                        if($ex == 'file' && !$request->hasFile($key)){
-                            $this->errors[$key]['file'] = 'Field '.$key.' is required';
+                $rules = explode('|', $rules);
+                if(count($rules) > 0){
+                    /*Check Is File Request*/
+                    $value = $request->get($key);
+                    $files = $request->file($key);
+                    foreach($rules as $rule){
+                        if($rule == 'required' && !$value && !$files){
+                            $this->errors[$key]['required'] = 'The '.$key.' is required';
                         }
-                        if($ex == 'required' && (!$request->has($key) || empty($request->get($key)))){
-                            $this->errors[$key]['required'] = 'Field '.$key.' is required';
+                        if($rule == 'file' && !$files){
+                            $this->errors[$key]['required'] = 'The '.$key.' must be a file';
                         }
-                        if($ex == 'number' && !is_numeric($value)) {
-                            $this->errors[$key]['number'] = 'Field '.$key.' is numberic';
+                        if($rule == 'number' && !is_numeric($value)) {
+                            $this->errors[$key]['number'] = 'The '.$key.' is numberic';
                         }
-                        if($ex == 'url' && !filter_var($value, FILTER_VALIDATE_URL)){
-                            $this->errors[$key]['url'] = 'Field '.$key.' must be url';
+                        if($rule == 'url' && !filter_var($value, FILTER_VALIDATE_URL)){
+                            $this->errors[$key]['url'] = 'The '.$key.' must be url';
                         }
-                        if($ex == 'email' && !filter_var($value, FILTER_VALIDATE_EMAIL)){
-                            $this->errors[$key]['email'] = 'Field '.$key.' must be email';
+                        if($rule == 'email' && !filter_var($value, FILTER_VALIDATE_EMAIL)){
+                            $this->errors[$key]['email'] = 'The '.$key.' must be email';
                         }
-                        if($ex == 'alpha' && !filter_var($value, FILTER_VALIDATE_REGEXP, array('options' => array('regexp' => "/^[a-zA-Z]+$/")))){
-                            $this->errors[$key]['alpha'] = 'Field '.$key.' must be alphabets';
+                        if($rule == 'alpha' && !filter_var($value, FILTER_VALIDATE_REGEXP, array('options' => array('regexp' => "/^[a-zA-Z]+$/")))){
+                            $this->errors[$key]['alpha'] = 'The '.$key.' must be alphabets';
                         }
-                        $pos = strpos($ex, ':');
-                        if($pos !== false){
-                            $dotexs = explode(':', $ex);
-                            $rule = $dotexs[0];
-                            $rule1 = @$dotexs[1];
-                            if(!empty($rule1) && !empty($rule)) {
-                                if ($rule == 'min' && strlen($value) < (int)$rule1) {
-                                    $this->errors[$key]['min'] = 'Field ' . $key . ' minimum ' . $rule1 . ' characters';
+                        if($rule == 'confirmed'){
+                            $value_confirmed = $request->get($key.'_confirmation');
+                            if($value_confirmed != $value){
+                                $this->errors[$key]['confirmed'] = 'The '.$key.' confirmation does not match.';
+                            }
+                        }
+                        if($rule == 'image'){
+                            if(is_object($files) && !in_array($files->getMime(), ['image/gif','image/jpeg','image/png','image/bmp'])){
+                                $this->errors[$key]['image'] = 'The '.$key.' must be image';
+                            }
+                            if(is_array($files)){
+                                foreach($files as $keyf=>$file){
+                                    if(!in_array($file->getMime(), ['image/gif','image/jpeg','image/png','image/bmp'])){
+                                        $this->errors[$key]['image'][] = 'The '.$key.'-'.($keyf+1).' must be image';
+                                    }
                                 }
-                                if ($rule == 'max' && strlen($value) > (int)$rule1) {
-                                    $this->errors[$key]['max'] = 'Field ' . $key . ' maximum ' . $rule1 . ' characters';
+                            }
+                        }
+                        if($rule == 'string' && $value){
+                            if(is_string($value) && is_numeric($value)){
+                                $this->errors[$key]['string'] = 'The '.$key.' must be a string.';
+                            }
+                        }
+                        if(strpos($rule, ':') !== false){
+                            $dotexs = explode(':', $rule);
+                            $rule1 = $dotexs[0];
+                            $rule2 = @$dotexs[1];
+                            if(!empty($rule2) && !empty($rule1)) {
+                                if (is_string($value) && $rule1 == 'min' && mb_strlen($value) < (int)$rule2) {
+                                    $this->errors[$key]['min'] = 'The ' . $key . ' minimum ' . $rule2 . ' characters';
                                 }
-                                if ($rule == 'unique') {
-                                    $tbexs = explode(',',$rule1);
+                                if(is_string($value) && is_numeric($value) && $rule1 == 'min' && (int)$value < (int)$rule2){
+                                    $this->errors[$key]['max'] = 'The ' . $key . ' is minimum ' . $rule2;
+                                }
+                                if(is_array($value) && $rule1 == 'min' && count($value) < (int)$rule2){
+                                    $this->errors[$key]['max'] = 'The ' . $key . ' is minimum ' . $rule2.' arrays';
+                                }
+
+                                if (is_string($value) &&!is_numeric($value) && $rule1 == 'max' && mb_strlen($value) > (int)$rule2) {
+                                    $this->errors[$key]['max'] = 'The ' . $key . '  may not be greater than ' . $rule2 . ' characters';
+                                }
+                                if(is_string($value) && is_numeric($value) && $rule1 == 'max' && (int)$value > (int)$rule2){
+                                    $this->errors[$key]['max'] = 'The ' . $key . '  may not be greater than ' . $rule2;
+                                }
+                                if(is_array($value) && $rule1 == 'max' && count($value) > (int)$rule2){
+                                    $this->errors[$key]['max'] = 'The ' . $key . ' may not have more than ' . $rule2.' items';
+                                }
+
+                                if(is_object($files) && $files->getSize() > (int)$rule2*1000){
+                                    $this->errors[$key]['max'] = 'The ' . $key . ' must be less than or equal ' . $rule2.'KB';
+                                }
+                                if(is_array($files)){
+                                    foreach($files as $keyf=>$file){
+                                        if($file->getSize() > (int)$rule2*1000){
+                                            $this->errors[$key]['max'][] = 'The ' . $key . '-'.($keyf+1).' must be less than or equal ' . $rule2.'KB';
+                                        }
+                                    }
+                                }
+
+                                if($rule1 == 'mimetypes' && (is_array($files) || is_object($files))){
+                                    $listRules = explode(',', $rule2);
+                                    if(is_object($files) && !in_array($files->getMime(), $listRules)){
+                                        $this->errors[$key]['mimetypes'] = 'The '.$key.' must be a file of type '.$rule2;
+                                    }
+                                    if(is_array($files)){
+                                        foreach($files as $keyf=>$file){
+                                            if(!in_array($file->getMime(), $listRules)){
+                                                $this->errors[$key]['mimetypes'][] = 'The '.$key.'-'.($keyf+1).' must be a file of type '.$rule2;
+                                            }
+                                        }
+                                    }
+                                }
+                                if($rule1 == 'mimes' && (is_array($files) || is_object($files))){
+                                    $listMimes = explode(',',$rule2);
+                                    if(is_object($files) && !in_array($files->getExt(), $listMimes)){
+                                        $this->errors[$key]['mimes'] = 'The '.$key.' must be a file of type: '.$rule2;
+                                    }
+                                    if(is_array($files)){
+                                        foreach($files as $keyf=>$file){
+                                            if(!in_array($file->getExt(), $listMimes)){
+                                                $this->errors[$key]['mimes'][] = 'The '.$key.'-'.($keyf+1).' must be a file of type: '.$rule2;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if ($rule1 == 'unique') {
+                                    $tbexs = explode(',',$rule2);
                                     if(count($tbexs) >= 2){
                                         $table = $tbexs[0];
                                         $column = $tbexs[1];
@@ -113,6 +190,27 @@ class Validator {
                                         $result = $statement->fetch(\PDO::FETCH_ASSOC);
                                         if(count($result)){
                                             $this->errors[$key]['unique'] = $value.' already exist in database';
+                                        }
+                                    }
+                                }
+                                if($rule1 == 'size'){
+                                    if(is_string($value) &&!is_numeric($value) && mb_strlen($value) != (int)$rule2){
+                                        $this->errors[$key]['size'] = 'The '.$key.' must be exactly '.$rule2;
+                                    }
+                                    if(is_numeric($value) && is_string($value) && $value != $rule2){
+                                        $this->errors[$key]['size'] = 'The '.$key.' must be exactly '.$rule2;
+                                    }
+                                    if(is_array($value) && count($value) != (int)$rule2){
+                                        $this->errors[$key]['size'] = 'The '.$key.' must be exactly '.$rule2;
+                                    }
+                                    if(is_object($files) && $files->getSize() != (int)$rule2*1000){
+                                        $this->errors[$key]['size'] = 'The '.$key.' must be '.$rule2.'KB';
+                                    }
+                                    if(is_array($files)){
+                                        foreach($files as $keyf=>$file){
+                                            if($file->getSize() != (int)$rule2){
+                                                $this->errors[$key]['size'][] = 'The '.$key.'-'.($keyf+1).' must be '.$rule2.'KB';
+                                            }
                                         }
                                     }
                                 }

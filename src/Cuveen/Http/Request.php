@@ -260,7 +260,7 @@ class Request
         if($attr && $attr != '' && isset($_REQUEST[$attr]) && $_REQUEST[$attr] != ''){
             return $this->cleanInput($_REQUEST[$attr]);
         }
-        return '';
+        return false;
     }
 
     public function post($attr)
@@ -323,18 +323,18 @@ class Request
                 $files = array();
                 foreach($_FILES[$attr]['name'] as $key=>$val){
                     if($_FILES[$attr]['error'][$key] === 0) {
-                        array_push($files, array(
+                        array_push($files, new File(array(
                             'name' => $val,
                             'type' => $_FILES[$attr]['type'][$key],
                             'tmp_name' => $_FILES[$attr]['tmp_name'][$key],
                             'error' => $_FILES[$attr]['error'][$key],
                             'size' => $_FILES[$attr]['size'][$key]
-                        ));
+                        )));
                     }
                 }
                 return $files;
             }
-            else{
+            elseif(!$_FILES[$attr]['error']){
                 $file = new File($_FILES[$attr]);
                 return $file;
             }
